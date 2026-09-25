@@ -94,6 +94,10 @@ describe('helper', function () {
   });
 
   describe('getValueOfPath', function () {
+    it('should not crash if an intermediate value is null', function () {
+      helper.assert(helper.getValueOfPath({ a : null }, 'a.b'), '');
+      helper.assert(helper.getValueOfPath({ a : { b : null } }, 'a.b.c'), '');
+    });
     it('should do nothing if object is undefined', function () {
       helper.assert(helper.getValueOfPath(), undefined);
     });

@@ -50,6 +50,8 @@ function convCurr (d, target, source) {
  * @return {Number}
  */
 function round (num, precision) {
+  // precision is a string when used as a formatter in a template (ex. {d.val:round(2)})
+  precision = parseInt(precision, 10) || 0;
   if (!('' + num).includes('e')) {
     return +(Math.round(num + 'e+' + precision)  + 'e-' + precision);
   }
@@ -84,12 +86,24 @@ function round (num, precision) {
  * @param  {Number} precision
  * @return {String}
  */
+// cache of thousand-separator regular expressions, used by _format (called for each formatted number)
+const groupRegExpCache = new Map();
+
+function _getGroupRegExp (group, hasDecimals) {
+  const _key = group + (hasDecimals ? 'D' : '$');
+  let _regExp = groupRegExpCache.get(_key);
+  if (_regExp === undefined) {
+    _regExp = new RegExp('\\d(?=(\\d{' + group + '})+' + (hasDecimals ? '\\D' : '$') + ')', 'g');
+    groupRegExpCache.set(_key, _regExp);
+  }
+  return _regExp;
+}
+
 function _format (value, format, precision = 3) {
-  var _re    = '\\d(?=(\\d{' + (format.group) + '})+' + (precision > 0 ? '\\D' : '$') + ')';
   var _value = round(value, precision);
   var _num   = _value.toFixed(Math.max(0, ~~precision));
 
-  return (format.decimal ? _num.replace('.', format.decimal) : _num).replace(new RegExp(_re, 'g'), '$&' + (format.separator || ','));
+  return (format.decimal ? _num.replace('.', format.decimal) : _num).replace(_getGroupRegExp(format.group, precision > 0), '$&' + (format.separator || ','));
 }
 
 /**

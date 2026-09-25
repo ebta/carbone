@@ -96,6 +96,19 @@ describe('parser', function () {
       /* eslint-enable */
     });
   });
+  describe('assignLoopId', function () {
+    it('should assign a loop id to all markers which use the count formatter, even if the previous marker name is longer', function () {
+      var _markers = [
+        { pos : 10, name : '_root.d.aVeryLongArrayName[i].name:count()' },
+        { pos : 20, name : '_root.d[i].x:count()' },
+        { pos : 30, name : '_root.d[i].y:count(5)' }
+      ];
+      parser.assignLoopId(_markers);
+      helper.assert(_markers[0].name, '_root.d.aVeryLongArrayName[i].name:count(010)');
+      helper.assert(_markers[1].name, '_root.d[i].x:count(120)');
+      helper.assert(_markers[2].name, '_root.d[i].y:count(230, 5)');
+    });
+  });
   describe('findMarkers', function () {
     it('should extract the markers from the xml, return the xml without the markers and a list of markers with their position in the xml\
         it should add the root object. It should replace the marker by a reserved character', function (done) {

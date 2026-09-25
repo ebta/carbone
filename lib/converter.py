@@ -52,6 +52,17 @@ def sendErrorOrExit(code):
         sys.exit(254) # Restart everything
 
 
+def closeDocument(document):
+    ### close() disposes the document. Calling dispose() before close() makes close() fail
+    try:
+        document.close(True)
+    except:
+        try:
+            document.dispose()
+        except:
+            pass
+
+
 def retryloop(attempts, timeout, delay=1):
     starttime = time.time()
     success = set()
@@ -125,13 +136,11 @@ def convert(message):
     try:
         document.storeToURL(outputurl, tuple(outputprops) )
     except:
+        closeDocument(document)
         sendErrorOrExit('401') # could not convert document
-        document.dispose()
-        document.close(True)
         return
 
-    document.dispose()
-    document.close(True)
+    closeDocument(document)
     send('200') ### Document converted
 
 

@@ -1169,6 +1169,10 @@ describe('formatter', function () {
   });
 
   describe('arrayMap', function () {
+    it('should not crash if the array contains null items and attributes are filtered', function () {
+      var _datas = [null, {id : 3, name : 'plane'}];
+      helper.assert(arrayFormatter.arrayMap(_datas, ', ', ':', 'id', 'name'), ':, 3:plane');
+    });
     it('should flatten the each object of the array (only the first level, ignoring sub arrays, sub objects,...)', function () {
       var _datas = [
         {id : 2, name : 'car'  , type : 'toy'    , sub : {id : 3}, arr : [12, 23]},
@@ -1314,6 +1318,17 @@ describe('formatter', function () {
   });
 
   describe('round', function () {
+
+    it('should accept precision as a string (value coming from the template) even with exponential numbers', function () {
+      helper.assert(numberFormatter.round(222.1552, '2'), 222.16);
+      helper.assert(numberFormatter.round(1.23456e-7, '9'), 1.23e-7);
+      helper.assert(numberFormatter.round(1.5e-7, '7'), 2e-7);
+      helper.assert(numberFormatter.formatN.call({lang : 'en'}, 1.23456e-7, '9'), '0.000000123');
+    });
+    it('should round to an integer if precision is not defined', function () {
+      helper.assert(numberFormatter.round(2.6), 3);
+      helper.assert(numberFormatter.round(2.4, undefined), 2);
+    });
 
     it('should round number', function () {
       var _this = {lang : 'fr'};

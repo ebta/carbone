@@ -442,6 +442,15 @@ describe('preprocessor', function () {
         });
       });
       describe('readSharedString', function () {
+        it('should keep shared strings which contain line breaks or which are empty, to preserve indexes', function () {
+          helper.assert(preprocessor.readSharedString('<sst><si><t>a</t></si><si><t xml:space="preserve">line1\nline2</t></si><si></si><si/><si><t>{d.id}</t></si></sst>'), [
+            '<t>a</t>',
+            '<t xml:space="preserve">line1\nline2</t>',
+            '',
+            '',
+            '<t>{d.id}</t>'
+          ]);
+        });
         it('should do nothing if the string is empty or null', function () {
           helper.assert(preprocessor.readSharedString(null), []);
           helper.assert(preprocessor.readSharedString(''), []);
@@ -524,6 +533,12 @@ describe('preprocessor', function () {
         });
       });
       describe('convertNumberMarkersIntoNumericFormat', function () {
+        it('should not crash if the cell contains the word formatN without marker', function () {
+          const _xml = '<table:table-cell office:value-type="string"><text:p>formatN</text:p></table:table-cell>';
+          const _template = { files : [{ name : 'content.xml', data : _xml }] };
+          preprocessor.convertNumberMarkersIntoNumericFormat(_template);
+          helper.assert(_template.files[0].data, _xml);
+        });
         it('should makes a number marker (:formatN) recognised as number cell for ODS files [1 marker]', function () {
           const _template = {
             files : [{
