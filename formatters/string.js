@@ -286,6 +286,68 @@ function prepend (d, toPrepend) {
   return toPrepend + d;
 }
 
+/**
+ * Append a string at the end of the value. The value is returned untouched if it is null or undefined.
+ *
+ * @version 3.5.7 new
+ *
+ * @example ["homer", " simpson"]
+ * @example [12, "€"]
+ * @example [null, "€"]
+ *
+ * @param  {Mixed}  d         data
+ * @param  {String} toAppend  text to append
+ * @return {String}           text with the appended string
+ */
+function append (d, toAppend) {
+  if (d === null || typeof d === 'undefined') {
+    return d;
+  }
+  return d + (toAppend === undefined || toAppend === null ? '' : toAppend);
+}
+
+/**
+ * Replace all occurrences of a text by another one. Only strings are modified.
+ *
+ * @version 3.5.7 new
+ *
+ * @example ["homer simpson", "simpson", "bart"]
+ * @example ["a.b.c", ".", "-"]
+ * @example ["homer", "h"]
+ *
+ * @param  {String} d        data
+ * @param  {String} oldText  text to search (not a regular expression)
+ * @param  {String} newText  [optional] replacement text, empty by default
+ * @return {String}          text with all occurrences replaced
+ */
+function replace (d, oldText, newText) {
+  if (typeof d === 'string' && oldText !== undefined && oldText !== null && oldText !== '') {
+    return d.split(oldText).join(newText === undefined || newText === null ? '' : newText);
+  }
+  return d;
+}
+
+/**
+ * Truncate a text if it is longer than `maxLength`, and add "..." at the end. The returned text is never longer than `maxLength`.
+ *
+ * @version 3.5.7 new
+ *
+ * @example ["homer simpson", 8]
+ * @example ["homer", 8]
+ * @example ["homer simpson", 2]
+ *
+ * @param  {String} d          data
+ * @param  {Number} maxLength  maximum length of the returned text, including "..."
+ * @return {String}            truncated text
+ */
+function ellipsis (d, maxLength) {
+  var _max = parseInt(maxLength, 10);
+  if (typeof d === 'string' && Number.isNaN(_max) === false && _max >= 0 && d.length > _max) {
+    return _max <= 3 ? '.'.repeat(_max) : d.slice(0, _max - 3) + '...';
+  }
+  return d;
+}
+
 module.exports = {
   lowerCase : lowerCase,
   upperCase : upperCase,
@@ -300,5 +362,8 @@ module.exports = {
   padl      : padl,
   padr      : padr,
   md5       : md5,
-  prepend   : prepend
+  prepend   : prepend,
+  append    : append,
+  replace   : replace,
+  ellipsis  : ellipsis
 };

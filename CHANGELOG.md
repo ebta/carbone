@@ -1,3 +1,15 @@
+### v3.5.7 (dev-itg)
+  - Independent implementation of features available in Carbone Enterprise, written from the public documentation (no Enterprise code). See doc/ROADMAP.md
+  - New formatters (phase 1)
+    - text: `append`, `replace`, `ellipsis`
+    - number: `mod`, `abs`, `ceil`, `floor`
+    - date: `diffD` (difference between two dates, accepts `now`), `formatI` (interval/duration: unit conversion, `human`, `human+`)
+    - condition: `ifTE` (type test: string, number, integer, boolean, array, object, binary)
+  - Fix bugs found during code review: `:count` loop ids, XLSX shared strings with line breaks/empty strings, `round`/`formatN` with string precision, null values in `arrayMap`/`getValueOfPath`, PDF/image `formatOptions` missing, zip error handling, converter document closing
+  - Security: CSV `formatOptions` are validated and converter arguments are escaped (argument injection), `rmDirRecursiveAsync` does not use a shell anymore
+  - Optimization: cache regular expressions used by `formatN`/`formatC`
+  - `npm test` sets `TZ=Europe/Paris`
+
 
 ### v3.5.6
   - Release June 12th 2024

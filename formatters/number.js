@@ -274,6 +274,84 @@ function div (d, value) {
 }
 div.isAcceptingMathExpression = true;
 
+/**
+ * Modulo: remainder of the division of the value by `divisor`. The value is returned untouched if the divisor is not a valid non-zero number.
+ *
+ * @version 3.5.7 new
+ *
+ * @example [10, 3]
+ * @example [-10, 3]
+ * @example [10, 0]
+ *
+ * @param  {Number} d        data
+ * @param  {Number} divisor  divisor
+ * @return {Number}          remainder
+ */
+function mod (d, divisor) {
+  var _divisor = parseFloat(divisor);
+  if (d !== null && typeof d !== 'undefined' && Number.isNaN(_divisor) === false && _divisor !== 0) {
+    return parseFloat(d) % _divisor;
+  }
+  return d;
+}
+
+/**
+ * Absolute value.
+ *
+ * @version 3.5.7 new
+ *
+ * @example [-23]
+ * @example [23.5]
+ * @example ["-1.5"]
+ *
+ * @param  {Number} d  data
+ * @return {Number}    absolute value
+ */
+function abs (d) {
+  if (d !== null && typeof d !== 'undefined') {
+    return Math.abs(parseFloat(d));
+  }
+  return d;
+}
+
+/**
+ * Round up to the next integer.
+ *
+ * @version 3.5.7 new
+ *
+ * @example [10.05]
+ * @example [-10.95]
+ * @example [10]
+ *
+ * @param  {Number} d  data
+ * @return {Number}    smallest integer greater than or equal to the value
+ */
+function ceil (d) {
+  if (d !== null && typeof d !== 'undefined') {
+    return Math.ceil(parseFloat(d));
+  }
+  return d;
+}
+
+/**
+ * Round down to the previous integer.
+ *
+ * @version 3.5.7 new
+ *
+ * @example [10.95]
+ * @example [-10.05]
+ * @example [10]
+ *
+ * @param  {Number} d  data
+ * @return {Number}    largest integer less than or equal to the value
+ */
+function floor (d) {
+  if (d !== null && typeof d !== 'undefined') {
+    return Math.floor(parseFloat(d));
+  }
+  return d;
+}
+
 module.exports = {
   formatN  : formatN,
   formatC  : formatC,
@@ -283,6 +361,10 @@ module.exports = {
   sub      : sub,
   mul      : mul,
   div      : div,
+  mod      : mod,
+  abs      : abs,
+  ceil     : ceil,
+  floor    : floor,
 
   /**
    * Converts a number to an INT

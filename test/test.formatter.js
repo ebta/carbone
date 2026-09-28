@@ -1447,6 +1447,180 @@ describe('formatter', function () {
       helper.assert(numberFormatter.div('120', '80'), 1.5);
     });
   });
+
+  describe('append', function () {
+    it('should append a string, and keep null or undefined values', function () {
+      helper.assert(stringFormatter.append('homer', ' simpson'), 'homer simpson');
+      helper.assert(stringFormatter.append(12, '€'), '12€');
+      helper.assert(stringFormatter.append('homer'), 'homer');
+      helper.assert(stringFormatter.append(null, '€'), null);
+      helper.assert(stringFormatter.append(undefined, '€'), undefined);
+    });
+  });
+
+  describe('replace', function () {
+    it('should replace all occurrences of a text (not a regular expression)', function () {
+      helper.assert(stringFormatter.replace('homer simpson', 'simpson', 'bart'), 'homer bart');
+      helper.assert(stringFormatter.replace('a.b.c', '.', '-'), 'a-b-c');
+      helper.assert(stringFormatter.replace('homer', 'h'), 'omer');
+      helper.assert(stringFormatter.replace('a+b+c', '+', '$&'), 'a$&b$&c');
+    });
+    it('should do nothing if the value is not a string or if there is nothing to search', function () {
+      helper.assert(stringFormatter.replace(12, '1', '2'), 12);
+      helper.assert(stringFormatter.replace(null, '1', '2'), null);
+      helper.assert(stringFormatter.replace('homer', '', 'x'), 'homer');
+      helper.assert(stringFormatter.replace('homer'), 'homer');
+    });
+  });
+
+  describe('ellipsis', function () {
+    it('should truncate long texts, and never return more than maxLength characters', function () {
+      helper.assert(stringFormatter.ellipsis('homer simpson', 8), 'homer...');
+      helper.assert(stringFormatter.ellipsis('homer simpson', '8'), 'homer...');
+      helper.assert(stringFormatter.ellipsis('homer simpson', 3), '...');
+      helper.assert(stringFormatter.ellipsis('homer simpson', 2), '..');
+      helper.assert(stringFormatter.ellipsis('homer simpson', 0), '');
+    });
+    it('should not modify short texts or other types', function () {
+      helper.assert(stringFormatter.ellipsis('homer', 8), 'homer');
+      helper.assert(stringFormatter.ellipsis('homer', 5), 'homer');
+      helper.assert(stringFormatter.ellipsis('homer'), 'homer');
+      helper.assert(stringFormatter.ellipsis(12345, 2), 12345);
+      helper.assert(stringFormatter.ellipsis(null, 2), null);
+    });
+  });
+
+  describe('mod, abs, ceil, floor', function () {
+    it('mod should return the remainder', function () {
+      helper.assert(numberFormatter.mod(10, 3), 1);
+      helper.assert(numberFormatter.mod('10', '3'), 1);
+      helper.assert(numberFormatter.mod(-10, 3), -1);
+      helper.assert(numberFormatter.mod(10.5, 3), 1.5);
+    });
+    it('mod should return the value if the divisor is invalid or zero', function () {
+      helper.assert(numberFormatter.mod(10, 0), 10);
+      helper.assert(numberFormatter.mod(10, 'abc'), 10);
+      helper.assert(numberFormatter.mod(10), 10);
+      helper.assert(numberFormatter.mod(null, 3), null);
+      helper.assert(numberFormatter.mod(undefined, 3), undefined);
+    });
+    it('abs should return the absolute value', function () {
+      helper.assert(numberFormatter.abs(-23), 23);
+      helper.assert(numberFormatter.abs('-1.5'), 1.5);
+      helper.assert(numberFormatter.abs(23.5), 23.5);
+      helper.assert(numberFormatter.abs(null), null);
+    });
+    it('ceil should round up', function () {
+      helper.assert(numberFormatter.ceil(10.05), 11);
+      helper.assert(numberFormatter.ceil(-10.95), -10);
+      helper.assert(numberFormatter.ceil('10.1'), 11);
+      helper.assert(numberFormatter.ceil(10), 10);
+      helper.assert(numberFormatter.ceil(undefined), undefined);
+    });
+    it('floor should round down', function () {
+      helper.assert(numberFormatter.floor(10.95), 10);
+      helper.assert(numberFormatter.floor(-10.05), -11);
+      helper.assert(numberFormatter.floor('10.9'), 10);
+      helper.assert(numberFormatter.floor(10), 10);
+      helper.assert(numberFormatter.floor(null), null);
+    });
+  });
+
+  describe('ifTE', function () {
+    var _test = function (d, type) {
+      var _ctx = { isAndOperator : null, isConditionTrue : null };
+      helper.assert(conditionFormatter.ifTE.call(_ctx, d, type), d);
+      return _ctx.isConditionTrue;
+    };
+    it('should test the type of the value', function () {
+      helper.assert(_test('homer', 'string'), true);
+      helper.assert(_test(10.5, 'number'), true);
+      helper.assert(_test(10, 'integer'), true);
+      helper.assert(_test(true, 'boolean'), true);
+      helper.assert(_test([1, 2], 'array'), true);
+      helper.assert(_test({ id : 1 }, 'object'), true);
+      helper.assert(_test('data:image/png;base64,iVBORw0KGgo=', 'binary'), true);
+    });
+    it('should return false if the type does not match', function () {
+      helper.assert(_test('homer', 'number'), false);
+      helper.assert(_test('10', 'integer'), false);
+      helper.assert(_test(10.5, 'integer'), false);
+      helper.assert(_test(NaN, 'number'), false);
+      helper.assert(_test([1], 'object'), false);
+      helper.assert(_test(null, 'object'), false);
+      helper.assert(_test({}, 'array'), false);
+      helper.assert(_test('http://a.b/c.png', 'binary'), false);
+      helper.assert(_test(undefined, 'string'), false);
+    });
+    it('should return false for an unknown type', function () {
+      helper.assert(_test('homer', 'unknown'), false);
+      helper.assert(_test('homer', undefined), false);
+    });
+    it('should combine with and/or operators', function () {
+      var _ctx = { isAndOperator : true, isConditionTrue : true };
+      conditionFormatter.ifTE.call(_ctx, 'homer', 'number');
+      helper.assert(_ctx.isConditionTrue, false);
+      _ctx = { isAndOperator : false, isConditionTrue : false };
+      conditionFormatter.ifTE.call(_ctx, 'homer', 'string');
+      helper.assert(_ctx.isConditionTrue, true);
+    });
+  });
+
+  describe('diffD', function () {
+    var _ctx = { lang : 'en', timezone : 'Europe/Paris', complement : { now : '2020-01-11T00:00:00Z' } };
+    it('should compute the difference in the requested unit (positive or negative)', function () {
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01', '2020-01-31', 'day'), 30);
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-31', '2020-01-01', 'day'), -30);
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01', '2021-03-01', 'month'), 14);
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01', '2020-01-01T12:00:00', 'hour'), 12);
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01', '2020-01-01T00:00:01', 'seconds'), 1);
+    });
+    it('should return milliseconds by default', function () {
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01T00:00:00', '2020-01-01T00:00:02'), 2000);
+    });
+    it('should accept input formats', function () {
+      helper.assert(dateFormatter.diffD.call(_ctx, '01-2020-01', '31-2020-01', 'day', 'DD-YYYY-MM', 'DD-YYYY-MM'), 30);
+    });
+    it('should accept "now", which is the date of the report', function () {
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01T00:00:00Z', 'now', 'day'), 10);
+    });
+    it('should return the input value if a date is missing or invalid', function () {
+      helper.assert(dateFormatter.diffD.call(_ctx, null, '2020-01-01', 'day'), null);
+      helper.assert(dateFormatter.diffD.call(_ctx, undefined, '2020-01-01', 'day'), undefined);
+      helper.assert(dateFormatter.diffD.call(_ctx, '2020-01-01', undefined, 'day'), '2020-01-01');
+      helper.assert(dateFormatter.diffD.call(_ctx, 'not a date', '2020-01-01', 'day'), 'not a date');
+    });
+  });
+
+  describe('formatI', function () {
+    var _en = { lang : 'en' };
+    it('should convert an interval in milliseconds to another unit', function () {
+      helper.assert(dateFormatter.formatI.call(_en, 3600000, 'second'), 3600);
+      helper.assert(dateFormatter.formatI.call(_en, 3600000, 'minute'), 60);
+      helper.assert(dateFormatter.formatI.call(_en, 3600000, 'hour'), 1);
+      helper.assert(dateFormatter.formatI.call(_en, 90000, 'm'), 1.5);
+      helper.assert(dateFormatter.formatI.call(_en, '3600000', 'hours'), 1);
+    });
+    it('should accept another input unit', function () {
+      helper.assert(dateFormatter.formatI.call(_en, 2, 'hour', 'day'), 48);
+      helper.assert(dateFormatter.formatI.call(_en, 120, 'minute', 'second'), 2);
+    });
+    it('should print human readable intervals in the lang of the report', function () {
+      helper.assert(dateFormatter.formatI.call(_en, 3600000, 'human'), 'an hour');
+      helper.assert(dateFormatter.formatI.call(_en, 3600000, 'human+'), 'in an hour');
+      helper.assert(dateFormatter.formatI.call(_en, -3600000, 'human+'), 'an hour ago');
+      helper.assert(dateFormatter.formatI.call({ lang : 'fr' }, 172800000, 'human+'), 'dans 2 jours');
+    });
+    it('should use english if the lang is not set', function () {
+      helper.assert(dateFormatter.formatI.call({}, 3600000, 'human'), 'an hour');
+    });
+    it('should return the input value if it is not a number or if the output unit is missing', function () {
+      helper.assert(dateFormatter.formatI.call(_en, null, 'hour'), null);
+      helper.assert(dateFormatter.formatI.call(_en, undefined, 'hour'), undefined);
+      helper.assert(dateFormatter.formatI.call(_en, 'abc', 'hour'), 'abc');
+      helper.assert(dateFormatter.formatI.call(_en, 3600000), 3600000);
+    });
+  });
 });
 
 /**

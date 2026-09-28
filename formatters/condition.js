@@ -285,6 +285,55 @@ function ifLTE (d, value) {
 }
 
 /**
+ * Matches values which are of the specified type. Available types: `string`, `number`, `integer`, `boolean`, `array`, `object`, `binary`.
+ * `binary` is true for a base64 data URI (data:image/png;base64,...).
+ *
+ * @version 3.5.7 new
+ * @exampleContextFormatter ["homer", "string"] true
+ * @exampleContextFormatter [10.5, "number"] true
+ * @exampleContextFormatter [10, "integer"] true
+ * @exampleContextFormatter [10.5, "integer"] false
+ * @exampleContextFormatter [true, "boolean"] true
+ * @exampleContextFormatter [[1, 2], "array"] true
+ * @exampleContextFormatter [{"id": 1}, "object"] true
+ * @exampleContextFormatter ["homer", "number"] false
+ *
+ * @param {Mixed}  d     data
+ * @param {String} type  type to test
+ * @returns It returns the initial value `d`. The state of the condition is not returned.
+ */
+function ifTE (d, type) {
+  var _result = false;
+  switch (type) {
+    case 'string':
+      _result = typeof(d) === 'string';
+      break;
+    case 'number':
+      _result = typeof(d) === 'number' && Number.isNaN(d) === false;
+      break;
+    case 'integer':
+      _result = Number.isInteger(d);
+      break;
+    case 'boolean':
+      _result = typeof(d) === 'boolean';
+      break;
+    case 'array':
+      _result = d instanceof Array;
+      break;
+    case 'object':
+      _result = d !== null && typeof(d) === 'object' && d instanceof Array === false;
+      break;
+    case 'binary':
+      _result = typeof(d) === 'string' && /^data:[^;,]*(;[^;,]*)*;base64,/.test(d);
+      break;
+    default:
+      break;
+  }
+  this.isConditionTrue = _updateCondition(this.isAndOperator, this.isConditionTrue, _result);
+  return d;
+}
+
+/**
  * Matches any of the values specified in an array or string, it replaces `ifContain`.
  *
  * @version 2.0.0
@@ -562,6 +611,7 @@ module.exports = {
   ifLTE,
   ifIN,
   ifNIN,
+  ifTE,
   hideBegin,
   hideEnd,
   showBegin,

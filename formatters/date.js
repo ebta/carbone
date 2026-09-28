@@ -1,5 +1,9 @@
 var dayjs = require('dayjs');
 
+// plugins needed by diffD and formatI. Extending twice is harmless, dayjs ignores plugins already installed
+dayjs.extend(require('dayjs/plugin/duration'));
+dayjs.extend(require('dayjs/plugin/relativeTime'));
+
 
 /**
  * Format dates. It takes an output date pattern as an argument. Date patterns are available on [this section](#date-formats).
@@ -146,6 +150,90 @@ function endOfD (d, unit, patternIn) {
 
 
 /**
+ * Compute the difference between two dates, in the requested unit. The result is positive if `toDate` is after the date, negative otherwise.
+ * `toDate` can be the string `now`, which is the current date of the report (`{c.now}`).
+ * Available units: day, week, month, quarter, year, hour, minute, second and millisecond (default).
+ * Units are case insensitive, and support plural and short forms. The result is truncated, not rounded.
+ *
+ * @version 3.5.7 new
+ *
+ * @exampleContext {"lang":"en", "timezone":"Europe/Paris"}
+ * @example ["2020-01-01", "2020-01-31", "day"]
+ * @example ["2020-01-31", "2020-01-01", "day"]
+ * @example ["2020-01-01", "2021-03-01", "month"]
+ * @example ["2020-01-01", "2020-01-01T12:00:00", "hour"]
+ * @example ["01-2020-01", "31-2020-01", "day", "DD-YYYY-MM", "DD-YYYY-MM"]
+ *
+ * @param  {String|Number} d   start date
+ * @param  {String|Number} toDate    end date, or "now"
+ * @param  {String} unit       [optional] unit of the result, "millisecond" by default
+ * @param  {String} patternFrom [optional] input format of the start date, ISO8601 by default
+ * @param  {String} patternTo   [optional] input format of the end date, ISO8601 by default
+ * @return {Number}            difference between the two dates
+ */
+function diffD (d, toDate, unit, patternFrom, patternTo) {
+  if (d === null || typeof d === 'undefined' || toDate === null || typeof toDate === 'undefined') {
+    return d;
+  }
+  var _from = parse(d, patternFrom);
+  var _to   = null;
+  if (toDate === 'now') {
+    _to = dayjs((this && this.complement && this.complement.now) || undefined);
+  }
+  else {
+    _to = parse(toDate, patternTo);
+  }
+  if (_from.isValid() === false || _to.isValid() === false) {
+    return d;
+  }
+  // dayjs.diff truncates by default
+  return _to.diff(_from, unit || 'millisecond');
+}
+
+/**
+ * Format an interval or a duration. The value is a number, in milliseconds by default.
+ * The output can be a unit (the value is converted, e.g. `minute`) or a human readable text (`human`, `human+`), translated in the `lang` of the report.
+ * Available units: year, month, week, day, hour, minute, second and millisecond. Units are case insensitive, and support plural and short forms.
+ *
+ * @version 3.5.7 new
+ *
+ * @exampleContext {"lang":"en"}
+ * @example [3600000, "second"]
+ * @example [3600000, "minute"]
+ * @example [3600000, "hour"]
+ * @example [2, "hour", "day"]
+ * @example [3600000, "human"]
+ * @example [3600000, "human+"]
+ * @example [-3600000, "human+"]
+ *
+ * @exampleContext {"lang":"fr"}
+ * @example [3600000, "human"]
+ * @example [172800000, "human+"]
+ *
+ * @param  {Number} d          interval or duration
+ * @param  {String} patternOut output unit, or "human" or "human+" (with a suffix like "in an hour" or "an hour ago")
+ * @param  {String} patternIn  [optional] unit of the input value, "millisecond" by default
+ * @return {Number|String}     converted value, or a human readable text
+ */
+function formatI (d, patternOut, patternIn) {
+  var _value = parseFloat(d);
+  if (d === null || typeof d === 'undefined' || Number.isNaN(_value) === true || !patternOut) {
+    return d;
+  }
+  var _duration = dayjs.duration(_value, patternIn || 'millisecond');
+  var _lang = (this && this.lang) || 'en';
+  switch (patternOut) {
+    case 'human':
+      return _duration.locale(_lang).humanize(false);
+    case 'human+':
+      return _duration.locale(_lang).humanize(true);
+    default:
+      // remove floating-point noise, e.g. 0.1 + 0.2
+      return parseFloat(_duration.as(patternOut).toFixed(10));
+  }
+}
+
+/**
  * Format dates
  *
  * @deprecated
@@ -199,5 +287,7 @@ module.exports = {
   addD,
   subD,
   startOfD,
-  endOfD
+  endOfD,
+  diffD,
+  formatI
 };

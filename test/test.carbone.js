@@ -60,6 +60,15 @@ describe('Carbone', function () {
       carbone.reset();
       done();
     });
+    it('should use the new formatters (append, replace, ellipsis, mod, abs, ceil, floor, ifTE, diffD, formatI) inside a template', function (done) {
+      var _xml = '<xml>{d.t:ellipsis(8)}|{d.t:replace(\'simpson\', \'bart\')}|{d.t:append(\'!\')}|{d.n:mod(3)}|{d.neg:abs}|{d.f:ceil}|{d.f:floor}|{d.s:ifTE(\'string\'):show(\'S\'):elseShow(\'N\')}|{d.n:ifTE(\'string\'):show(\'S\'):elseShow(\'N\')}|{d.ms:formatI(\'minute\')}|{d.ms:formatI(\'human\')}|{d.a:diffD(\'2020-01-31\', \'day\')}</xml>';
+      var _data = { t : 'homer simpson', n : 10, neg : -5, f : 1.5, s : 'x', ms : 180000, a : '2020-01-01' };
+      carbone.renderXML(_xml, _data, { lang : 'en' }, function (err, result) {
+        helper.assert(err+'', 'null');
+        helper.assert(result, '<xml>homer...|homer bart|homer simpson!|1|5|2|1|S|N|3|3 minutes|30</xml>');
+        done();
+      });
+    });
     it('should return friday for 20140131 even if no timezone is set', function (done) {
       carbone.set({lang : 'fr'});
       carbone.renderXML('<xml> {d.date:formatD(dddd)} </xml>', { date : '20140131 23:45:00'},  function (err, result) {
