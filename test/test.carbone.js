@@ -60,6 +60,14 @@ describe('Carbone', function () {
       carbone.reset();
       done();
     });
+    it('should accept parenthesis and commas inside quoted arguments of formatters', function (done) {
+      var _xml = '<xml>{d.c:ifEQ(\'#00FF00\'):show(\'green\'):elseShow(\'rgb(1,2,3)\')}|{d.c:ifEQ(\'#FF0000\'):show(\'x(1,2)\'):elseShow(\'b\')}|{d.n:prepend(\'a) b\')}|{d.n:prepend(\'(\')}|{d.n:ifGT(3):show(\'big (yes)\')}|{d.c:ifEQ(\'#FF0000\'):show(\'a:b(c)\')}</xml>';
+      carbone.renderXML(_xml, { c : '#FF0000', n : 5 }, { lang : 'en' }, function (err, result) {
+        helper.assert(err+'', 'null');
+        helper.assert(result, '<xml>rgb(1,2,3)|x(1,2)|a) b5|(5|big (yes)|a:b(c)</xml>');
+        done();
+      });
+    });
     it('should use the new formatters (append, replace, ellipsis, mod, abs, ceil, floor, ifTE, diffD, formatI) inside a template', function (done) {
       var _xml = '<xml>{d.t:ellipsis(8)}|{d.t:replace(\'simpson\', \'bart\')}|{d.t:append(\'!\')}|{d.n:mod(3)}|{d.neg:abs}|{d.f:ceil}|{d.f:floor}|{d.s:ifTE(\'string\'):show(\'S\'):elseShow(\'N\')}|{d.n:ifTE(\'string\'):show(\'S\'):elseShow(\'N\')}|{d.ms:formatI(\'minute\')}|{d.ms:formatI(\'human\')}|{d.a:diffD(\'2020-01-31\', \'day\')}</xml>';
       var _data = { t : 'homer simpson', n : 10, neg : -5, f : 1.5, s : 'x', ms : 180000, a : '2020-01-01' };
