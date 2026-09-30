@@ -57,6 +57,10 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   In ODF files, write the marker in the description of the picture (LibreOffice: right click > Properties > Description).
   Not done yet: XLSX, PPTX, SVG and WebP images
 - [ ] Barcodes (`barcode`)
-- [ ] Charts, hyperlinks, PDF options (append/attach files, forms)
+- [x] Dynamic hyperlinks: the address of the link is a marker, `{d.url}` or `https://shop.com/{d.id}` (an editor can store it as `%7Bd.url%7D`, it is decoded).
+  DOCX and PPTX (relationships are created for each URL, so each row of a loop can have its own link) and ODF (ODT, ODS, ODP). Only `http`, `https`, `mailto`, `tel`, `ftp`, `sms`
+  and relative links are accepted, other schemes (`javascript:`, `data:`, ...) remove the link and keep the text. Tested: DOCX, ODT. PPTX, ODS, ODP: same code, unit tests only.
+  Not done yet: XLSX (links are outside of the rows, a link per row needs another mechanism), fields `HYPERLINK "..."` of Word
+- [ ] Charts, PDF options (append/attach files, forms)
 
 Order inside a phase may change; each step ends with unit tests and a CHANGELOG entry.
