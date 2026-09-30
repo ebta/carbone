@@ -90,6 +90,40 @@ function renderDocx (body, data, callback) {
   });
 }
 
+function frame (name, descTag, w, h) {
+  return '<draw:frame draw:name="' + name + '" text:anchor-type="as-char" svg:width="' + w + '" svg:height="' + h + '">'
+    + '<draw:image xlink:href="Pictures/placeholder.png" xlink:type="simple" loext:mime-type="image/png"/>' + descTag + '</draw:frame>';
+}
+
+function buildOdtTemplate (body) {
+  return {
+    isZipped   : true,
+    filename   : 'test.odt',
+    embeddings : [],
+    files      : [
+      { name : 'mimetype', isMarked : false, parent : '', data : Buffer.from('application/vnd.oasis.opendocument.text') },
+      { name : 'content.xml', isMarked : true, parent : '', data : '<office:document-content><office:body><office:text>' + body + '</office:text></office:body></office:document-content>' },
+      { name : 'META-INF/manifest.xml', isMarked : true, parent : '', data : '<manifest:manifest><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/></manifest:manifest>' },
+      { name : 'Pictures/placeholder.png', isMarked : false, parent : '', data : PLACEHOLDER }
+    ]
+  };
+}
+
+function renderOdt (body, data, callback) {
+  carbone.render(buildOdtTemplate(body), data, {}, function (err, result) {
+    if (err) {
+      return callback(err);
+    }
+    file.unzip(result, function (errUnzip, files) {
+      var _res = {};
+      (files || []).forEach(function (f) {
+        _res[f.name] = f.data;
+      });
+      callback(errUnzip, _res);
+    });
+  });
+}
+
 describe('dynamic images', function () {
 
   var _paramsBackup = {};
@@ -176,6 +210,85 @@ describe('dynamic images', function () {
       var _xml = '<w:drawing><wp:docPr descr="{d.a}"/><a:blip r:embed="rId1"/></w:drawing><w:drawing><wp:docPr descr="{d.b}"/><a:blip r:embed="rId2"/></w:drawing>';
       var _res = image.expandImageMarkers(_xml);
       assert.ok(_res.indexOf('r:embed="{d.a:_image}"') !== -1 && _res.indexOf('r:embed="{d.b:_image}"') !== -1);
+    });
+  });
+
+  describe('expandImageMarkers for ODF', function () {
+    it('should move the marker from svg:desc or svg:title to the picture', function () {
+      helper.assert(image.expandImageMarkers('<draw:frame svg:width="1cm"><draw:image xlink:href="Pictures/a.png"/><svg:desc>{d.logo:imageFit(fill)}</svg:desc></draw:frame>'),
+        '<draw:frame svg:width="1cm"><draw:image xlink:href="{d.logo:imageFit(fill):_image}"/><svg:desc></svg:desc></draw:frame>');
+      helper.assert(image.expandImageMarkers('<draw:frame><draw:image xlink:href="Pictures/a.png"/><svg:title> {d.logo} </svg:title></draw:frame>'),
+        '<draw:frame><draw:image xlink:href="{d.logo:_image}"/><svg:title></svg:title></draw:frame>');
+    });
+    it('should not modify frames without marker, or without picture', function () {
+      var _xml = '<draw:frame><draw:image xlink:href="Pictures/a.png"/><svg:desc>Company logo</svg:desc></draw:frame><draw:frame><draw:text-box/><svg:desc>{d.logo}</svg:desc></draw:frame>';
+      helper.assert(image.expandImageMarkers(_xml), _xml);
+    });
+  });
+
+  describe('render an odt with dynamic images', function () {
+    var DESC = function (marker) {
+      return '<svg:desc>' + marker + '</svg:desc>';
+    };
+    it('should replace pictures, add files in Pictures and in the manifest, and use the real mime type', function (done) {
+      var _png = buildPng(160, 80);
+      var _jpg = buildJpeg(128, 64);
+      renderOdt('<text:p>' + frame('I1', DESC('{d.a}'), '8cm', '4cm') + frame('I2', DESC('{d.b}'), '2cm', '1cm') + '</text:p>', { a : toUri(_png), b : toUri(_jpg, 'jpeg') }, function (err, files) {
+        helper.assert(err, null);
+        var _pictures = Object.keys(files).filter(function (name) {
+          return /^Pictures\/carbone_/.test(name);
+        });
+        helper.assert(_pictures.length, 2);
+        var _content = files['content.xml'].toString();
+        assert.ok(_content.indexOf('CARBONE_IMG') === -1);
+        assert.ok(_content.indexOf('<svg:desc></svg:desc>') !== -1);
+        _pictures.forEach(function (name) {
+          assert.ok(_content.indexOf('xlink:href="' + name + '"') !== -1);
+          assert.ok(files['META-INF/manifest.xml'].toString().indexOf('manifest:full-path="' + name + '" manifest:media-type="' + (/\.jpg$/.test(name) ? 'image/jpeg' : 'image/png') + '"') !== -1);
+        });
+        assert.ok(/loext:mime-type="image\/jpeg"/.test(_content));
+        assert.ok(/Pictures\/placeholder\.png/.test(Object.keys(files).join(',')));
+        done();
+      });
+    });
+    it('should resize the frame according to imageFit, keeping units', function (done) {
+      var _uri = toUri(buildPng(60, 120));
+      var _body = '<text:p>' + frame('I1', DESC('{d.img}'), '8cm', '4cm') + frame('I2', DESC('{d.img:imageFit(fillWidth)}'), '8cm', '4cm') + frame('I3', DESC('{d.img:imageFit(fill)}'), '3in', '2in') + '</text:p>';
+      renderOdt(_body, { img : _uri }, function (err, files) {
+        helper.assert(err, null);
+        var _sizes = files['content.xml'].toString().match(/svg:width="[^"]*" svg:height="[^"]*"/g);
+        helper.assert(_sizes, ['svg:width="2cm" svg:height="4cm"', 'svg:width="8cm" svg:height="16cm"', 'svg:width="3in" svg:height="2in"']);
+        done();
+      });
+    });
+    it('should remove the frame if the value is empty, and keep frames without dynamic image', function (done) {
+      renderOdt('<text:p>a' + frame('I1', DESC('{d.missing}'), '1cm', '1cm') + frame('I2', DESC('Company logo'), '1cm', '1cm') + '</text:p>', {}, function (err, files) {
+        helper.assert(err, null);
+        var _content = files['content.xml'].toString();
+        helper.assert(_content.match(/<draw:frame/g).length, 1);
+        assert.ok(_content.indexOf('Company logo') !== -1);
+        helper.assert(Object.keys(files).filter(function (n) { return /^Pictures\/carbone_/.test(n); }), []);
+        done();
+      });
+    });
+    it('should print different pictures in a loop', function (done) {
+      var _body = '<text:p>{d.items[i].n}' + frame('I1', DESC('{d.items[i].img}'), '2cm', '2cm') + '</text:p><text:p>{d.items[i+1].n}' + frame('I2', DESC('{d.items[i+1].img}'), '2cm', '2cm') + '</text:p>';
+      var _data = { items : [{ n : 'a', img : toUri(buildPng(20, 20)) }, { n : 'b', img : toUri(buildPng(30, 20)) }, { n : 'c', img : toUri(buildPng(20, 20)) }] };
+      renderOdt(_body, _data, function (err, files) {
+        helper.assert(err, null);
+        var _hrefs = files['content.xml'].toString().match(/xlink:href="Pictures\/carbone_\w+\.png"/g);
+        helper.assert(_hrefs.length, 3);
+        helper.assert(_hrefs[0], _hrefs[2]);
+        assert.notStrictEqual(_hrefs[0], _hrefs[1]);
+        helper.assert(Object.keys(files).filter(function (n) { return /^Pictures\/carbone_/.test(n); }).length, 2);
+        done();
+      });
+    });
+    it('should return an error if an image is invalid', function (done) {
+      renderOdt('<text:p>' + frame('I1', DESC('{d.img}'), '1cm', '1cm') + '</text:p>', { img : 'data:image/png;base64,AAAA' }, function (err) {
+        assert.ok(/Cannot load the image/.test(err.message));
+        done();
+      });
     });
   });
 
