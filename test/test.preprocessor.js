@@ -441,6 +441,65 @@ describe('preprocessor', function () {
           });
         });
       });
+      describe('applyTemplateOptions', function () {
+        it('should apply lang and timezone declared in the template, and remove markers', function () {
+          var _options = { lang : 'en', timezone : 'Europe/Paris' };
+          helper.assert(preprocessor.applyTemplateOptions('<p>{o.lang=fr}a</p><p>{ o.timezone = Asia/Jakarta }b</p>', _options), '<p>a</p><p>b</p>');
+          helper.assert(_options.lang, 'fr');
+          helper.assert(_options.timezone, 'Asia/Jakarta');
+        });
+        it('should accept xml tags inside the marker and keep them', function () {
+          var _options = { lang : 'en' };
+          helper.assert(preprocessor.applyTemplateOptions('<p>{o.<b>lang</b>=<i>DE</i>}</p>', _options), '<p><b></b><i></i></p>');
+          helper.assert(_options.lang, 'de');
+        });
+        it('the last declaration should win', function () {
+          var _options = { lang : 'en' };
+          preprocessor.applyTemplateOptions('{o.lang=fr}{o.lang=es}', _options);
+          helper.assert(_options.lang, 'es');
+        });
+        it('should ignore invalid timezones, and keep other markers', function () {
+          var _options = { lang : 'en', timezone : 'Europe/Paris' };
+          helper.assert(preprocessor.applyTemplateOptions('{o.timezone=Not/AZone}{o.foo=bar}{o.lang}{d.o.lang=fr}', _options), '{o.foo=bar}{o.lang}{d.o.lang=fr}');
+          helper.assert(_options.timezone, 'Europe/Paris');
+          helper.assert(_options.lang, 'en');
+        });
+        it('should update currencies deduced from the lang, but not the ones defined by the user', function () {
+          var _auto = { lang : 'en', currency : { source : 'USD', target : 'USD' } };
+          Object.defineProperty(_auto.currency, 'isSourceFromLocale', { value : true, writable : true });
+          Object.defineProperty(_auto.currency, 'isTargetFromLocale', { value : true, writable : true });
+          preprocessor.applyTemplateOptions('{o.lang=fr}', _auto);
+          helper.assert(_auto.currency, { source : 'EUR', target : 'EUR' });
+          var _manual = { lang : 'en', currency : { source : 'USD', target : 'GBP' } };
+          Object.defineProperty(_manual.currency, 'isSourceFromLocale', { value : false, writable : true });
+          Object.defineProperty(_manual.currency, 'isTargetFromLocale', { value : false, writable : true });
+          preprocessor.applyTemplateOptions('{o.lang=fr}', _manual);
+          helper.assert(_manual.currency, { source : 'USD', target : 'GBP' });
+        });
+        it('should do nothing if options or xml are not defined', function () {
+          helper.assert(preprocessor.applyTemplateOptions(null, {}), null);
+          helper.assert(preprocessor.applyTemplateOptions('{o.lang=fr}', undefined), '{o.lang=fr}');
+          helper.assert(preprocessor.applyTemplateOptions(Buffer.from('a'), {}), Buffer.from('a'));
+        });
+        it('should apply options found in any file before translating other files', function (done) {
+          var _options = { lang : 'en', translations : { fr : { hello : 'bonjour' }, en : { hello : 'hi' } } };
+          var _template = {
+            filename   : 'a.docx',
+            extension  : 'docx',
+            embeddings : [],
+            files      : [
+              { name : 'word/header1.xml', data : '<w:p>{t(hello)}</w:p>' },
+              { name : 'word/document.xml', data : '<w:p>{o.lang=fr}</w:p>' }
+            ]
+          };
+          preprocessor.execute(_template, _options, function (err, template) {
+            helper.assert(err, null);
+            helper.assert(template.files[0].data, '<w:p>bonjour</w:p>');
+            helper.assert(template.files[1].data, '<w:p></w:p>');
+            done();
+          });
+        });
+      });
       describe('readSharedString', function () {
         it('should keep shared strings which contain line breaks or which are empty, to preserve indexes', function () {
           helper.assert(preprocessor.readSharedString('<sst><si><t>a</t></si><si><t xml:space="preserve">line1\nline2</t></si><si></si><si/><si><t>{d.id}</t></si></sst>'), [

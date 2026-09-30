@@ -5,6 +5,11 @@
     - number: `mod`, `abs`, `ceil`, `floor`
     - date: `diffD` (difference between two dates, accepts `now`), `formatI` (interval/duration: unit conversion, `human`, `human+`)
     - condition: `ifTE` (type test: string, number, integer, boolean, array, object, binary)
+  - New aggregators and cumulative formatters (phase 2). See the examples in doc/ROADMAP.md
+    - `aggSum`, `aggAvg`, `aggMin`, `aggMax`, `aggCount`, `aggCountD`, `aggStr`, `aggStrD`, used with empty brackets: `{d.items[].price:aggSum}`. Usable inside loops and nested arrays
+    - `cumSum`, `cumCountD` (rows hidden by a filter are not counted), `cumCount` (alias of `count`)
+    - `arrayJoin(separator, index, count)`: join a part of an array
+    - Options in the template: `{o.lang=fr}`, `{o.timezone=Asia/Jakarta}`
   - Fix bugs found during code review: `:count` loop ids, XLSX shared strings with line breaks/empty strings, `round`/`formatN` with string precision, null values in `arrayMap`/`getValueOfPath`, PDF/image `formatOptions` missing, zip error handling, converter document closing
   - Security: CSV `formatOptions` are validated and converter arguments are escaped (argument injection), `rmDirRecursiveAsync` does not use a shell anymore
   - Optimization: cache regular expressions used by `formatN`/`formatC`

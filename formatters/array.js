@@ -7,6 +7,9 @@
  * @example [ ["homer", "bart", "lisa"]        ]
  * @example [ ["homer", "bart", "lisa"] , " | "]
  * @example [ ["homer", "bart", "lisa"] , ""   ]
+ * @example [ ["homer", "bart", "lisa"] , ", ", 1 ]
+ * @example [ ["homer", "bart", "lisa"] , ", ", 1, 1 ]
+ * @example [ ["homer", "bart", "lisa"] , ", ", -2 ]
  * @example [ [10, 50]                         ]
  * @example [ []                               ]
  * @example [ null                             ]
@@ -16,9 +19,11 @@
  *
  * @param  {Array}  d           array passed by carbone
  * @param  {String} separator   [optional] item separator (`,` by default)
+ * @param  {Integer} index      [optional] index of the first item to join (0 by default). A negative index starts from the end
+ * @param  {Integer} count      [optional] number of items to join (all by default)
  * @return {String}             computed result, or `d` if `d` is not an array
  */
-function arrayJoin (d, separator) {
+function arrayJoin (d, separator, index, count) {
   if (separator === undefined) {
     separator = ', ';
   }
@@ -30,6 +35,13 @@ function arrayJoin (d, separator) {
   }
 
   if (d instanceof Array) {
+    var _start = parseInt(index, 10);
+    var _count = parseInt(count, 10);
+    if (Number.isNaN(_start) === false || Number.isNaN(_count) === false) {
+      // negative index: start from the end of the array
+      _start = Number.isNaN(_start) ? 0 : (_start < 0 ? Math.max(d.length + _start, 0) : _start);
+      d = d.slice(_start, (Number.isNaN(_count) || _count < 0) ? undefined : _start + _count);
+    }
     return d.join(separator);
   }
   return d;

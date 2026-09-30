@@ -14,12 +14,32 @@ Status: `[x]` done, `[ ]` todo.
 - [x] `diffD`, `formatI`
 - [x] `ifTE`
 
-## Phase 2: computation on arrays (needs changes in `lib/builder.js` / `lib/extracter.js`)
-- [ ] Aggregators: `aggSum`, `aggAvg`, `aggMin`, `aggMax`, `aggCount`, `aggCountD`, `aggStr`, `aggStrD`
-- [ ] Cumulative: `cumSum`, `cumCount` (replaces `count`), `cumCountD`
-- [ ] `arrayJoin(separator, index, count)`: extra parameters
-- [ ] `set`: store a computed value and reuse it
-- [ ] In-template options: `{o.lang=fr}`, `{o.timezone=Asia/Jakarta}`
+## Phase 2: computation on arrays
+- [x] Aggregators: `aggSum`, `aggAvg`, `aggMin`, `aggMax`, `aggCount`, `aggCountD`, `aggStr`, `aggStrD`
+- [x] Cumulative: `cumSum`, `cumCount` (alias of `count`), `cumCountD`
+- [x] `arrayJoin(separator, index, count)`: extra parameters
+- [x] In-template options: `{o.lang=fr}`, `{o.timezone=Asia/Jakarta}`
+- [ ] `set`: store a computed value and reuse it. Not started: the exact syntax and behavior must be confirmed first
+
+### Usage
+
+| Template | Result |
+|---|---|
+| `{d.items[].price:aggSum}` | sum of `price` of all items |
+| `{d.items[].price:aggAvg:formatN(2)}` | average, then formatted |
+| `{d.items[]:aggCount}` | number of items |
+| `{d.items[].type:aggCountD}` | number of distinct types |
+| `{d.kids[].name:aggStr(' / ')}` | `homer / bart` (`aggStrD` for distinct values) |
+| `{d.cars[i].wheels[].size:aggSum}` | one sum for each car, inside a loop |
+| `{d.cars[].wheels[].size:aggSum}` | sum of all wheels of all cars |
+| `{d.items[i].price:cumSum}` | running total, row after row |
+| `{d.items[i].type:cumCountD}` | running number of distinct types |
+| `{d.names:arrayJoin(', ', 1, 2)}` | join 2 items, starting at index 1 (negative index: from the end) |
+| `{o.lang=fr}` | language of the whole report (also `{o.timezone=...}`). The last declaration wins |
+
+Behavior: values which are not numbers are ignored by `aggSum/Avg/Min/Max`. `aggSum` and `aggCount` return 0 on an
+empty array, `aggAvg/Min/Max` print nothing. Filters inside brackets (`[price>5]`) are not supported with empty
+brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 
 ## Phase 3: document-format dependent features (DOCX, ODT, XLSX, ODS, PPTX, ODP)
 - [ ] `drop`, `keep` (remove/keep a document element: row, paragraph, page, table, ...)

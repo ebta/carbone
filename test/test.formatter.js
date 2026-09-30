@@ -1216,6 +1216,18 @@ describe('formatter', function () {
   });
 
   describe('arrayJoin', function () {
+    it('should join a part of the array with index and count', function () {
+      var _d = ['homer', 'bart', 'lisa', 'maggie'];
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', 1), 'bart, lisa, maggie');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', '1', '2'), 'bart, lisa');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', 0, 1), 'homer');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', -2), 'lisa, maggie');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', -10, 2), 'homer, bart');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', undefined, 2), 'homer, bart');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', 10), '');
+      helper.assert(arrayFormatter.arrayJoin(_d, ', ', 1, -1), 'bart, lisa, maggie');
+      helper.assert(_d.length, 4);
+    });
     it('should flatten the array of string', function () {
       var _datas = ['1', '2', 'hey!'];
       helper.assert(arrayFormatter.arrayJoin(_datas), '1, 2, hey!');

@@ -96,6 +96,80 @@ describe('parser', function () {
       /* eslint-enable */
     });
   });
+  describe('findFirstFormatterIndex', function () {
+    it('should find the first ":" which is not inside brackets or quotes', function () {
+      helper.assert(parser.findFirstFormatterIndex('_root.d.items[].price:aggSum'), 21);
+      helper.assert(parser.findFirstFormatterIndex('_root.d.items[type=\'a:b\'].price:aggSum'), 31);
+      helper.assert(parser.findFirstFormatterIndex('_root.d.items[type="a:b"].price'), -1);
+      helper.assert(parser.findFirstFormatterIndex('_root.d.price'), -1);
+    });
+  });
+  describe('expandMarkerShortcuts', function () {
+    it('should rewrite aggregators used with empty brackets', function () {
+      var _markers = [
+        { pos : 1, name : '_root.d.items[].price:aggSum' },
+        { pos : 2, name : '_root.d.items[]:aggCount' },
+        { pos : 3, name : '_root.d.cars[i].wheels[].size:aggAvg:formatN(2)' },
+        { pos : 4, name : '_root.d.cars[].wheels[].size:aggMax' },
+        { pos : 5, name : '_root.d.items[].price:aggStr(\', \')' }
+      ];
+      parser.expandMarkerShortcuts(_markers);
+      helper.assert(_markers.map(function (m) { return m.name; }), [
+        "_root.d.items:_pluck('price'):aggSum",
+        '_root.d.items:aggCount',
+        "_root.d.cars[i].wheels:_pluck('size'):aggAvg:formatN(2)",
+        "_root.d.cars:_pluck('wheels[].size'):aggMax",
+        "_root.d.items:_pluck('price'):aggStr(', ')"
+      ]);
+    });
+    it('should not change other markers', function () {
+      var _markers = [
+        { pos : 1, name : '_root.d.items[].price' },
+        { pos : 2, name : '_root.d.items[].price:formatN' },
+        { pos : 3, name : '_root.d.items[i].price:aggSum' },
+        { pos : 4, name : '_root.d.items[][0]:aggSum' },
+        { pos : 5, name : '_root.d.price' }
+      ];
+      parser.expandMarkerShortcuts(_markers);
+      helper.assert(_markers.map(function (m) { return m.name; }), [
+        '_root.d.items[].price',
+        '_root.d.items[].price:formatN',
+        '_root.d.items[i].price:aggSum',
+        '_root.d.items[][0]:aggSum',
+        '_root.d.price'
+      ]);
+    });
+    it('should replace cumCount by count', function () {
+      var _markers = [
+        { pos : 1, name : '_root.d.items[i].price:cumCount' },
+        { pos : 2, name : '_root.d.items[i].price:cumCount(5):formatN' },
+        { pos : 3, name : '_root.d.items[i].price:cumCounter' }
+      ];
+      parser.expandMarkerShortcuts(_markers);
+      helper.assert(_markers.map(function (m) { return m.name; }), [
+        '_root.d.items[i].price:count',
+        '_root.d.items[i].price:count(5):formatN',
+        '_root.d.items[i].price:cumCounter'
+      ]);
+    });
+  });
+  describe('assignCumulativeId', function () {
+    it('should add a unique id as first parameter of cumulative formatters', function () {
+      var _markers = [
+        { pos : 10, name : '_root.d.items[i].price:cumSum' },
+        { pos : 20, name : '_root.d.items[i].price:cumSum:formatN(2)' },
+        { pos : 30, name : '_root.d.items[i].t:cumCountD' },
+        { pos : 40, name : '_root.d.items[i].price:add(1)' }
+      ];
+      parser.assignCumulativeId(_markers);
+      helper.assert(_markers.map(function (m) { return m.name; }), [
+        '_root.d.items[i].price:cumSum(cum0_10)',
+        '_root.d.items[i].price:cumSum(cum1_20):formatN(2)',
+        '_root.d.items[i].t:cumCountD(cum2_30)',
+        '_root.d.items[i].price:add(1)'
+      ]);
+    });
+  });
   describe('assignLoopId', function () {
     it('should assign a loop id to all markers which use the count formatter, even if the previous marker name is longer', function () {
       var _markers = [
