@@ -45,7 +45,10 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 - [x] `drop`, `keep`: remove/keep a `row`, `p` (paragraph) or `table`. Example: `{d.hide:ifEQ(true):drop(row)}`, `{d.visible:ifEQ(true):keep(p)}`, `drop(row, 2)` for 2 consecutive rows.
   The marker can be anywhere inside the element, also in a loop. It is rewritten into a `hideBegin/hideEnd` (or `showBegin/showEnd`) block.
   Not done yet: other elements (slide, page, image, shape, list item, sheet)
-- [ ] `color`: inject colors in cells, rows, shapes
+- [x] `color` (DOCX only): `{d.c:color(scope, type)}` with scope `p` (paragraph), `cell`, `row`, and type `text` or `background`.
+  The value can be `#RRGGBB`, `RRGGBB`, `#RGB`, `rgb(255,0,0)` or a basic color name (an invalid color gives the default color). It can be
+  computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
+  Not done yet: ODT, ODS, XLSX, PPTX, ODP (colors are stored in styles), shapes, borders
 - [ ] `html`: render HTML as native formatting (ODT, DOCX)
 - [ ] Dynamic images (URL / base64) and `imageFit`
 - [ ] Barcodes (`barcode`)

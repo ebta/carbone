@@ -11,6 +11,7 @@
     - `arrayJoin(separator, index, count)`: join a part of an array
     - Options in the template: `{o.lang=fr}`, `{o.timezone=Asia/Jakarta}`
   - New formatters `drop` and `keep` (phase 3): remove an element of the document (`row`, `p`, `table`) if a condition is true (`drop`) or false (`keep`). Example: `{d.isHidden:ifEQ(true):drop(row)}`. Works in loops, for docx, odt, ods, xlsx, pptx and html
+  - New formatter `color` (phase 3), docx only: change the color of the text or the background of a paragraph, a cell or a row. Example: `{d.color:color(row, background)}`. Accepts `#RRGGBB`, `RRGGBB`, `#RGB`, `rgb(r,g,b)` and basic color names, invalid colors use the default color
   - Fix bugs found during code review: `:count` loop ids, XLSX shared strings with line breaks/empty strings, `round`/`formatN` with string precision, null values in `arrayMap`/`getValueOfPath`, PDF/image `formatOptions` missing, zip error handling, converter document closing
   - Security: CSV `formatOptions` are validated and converter arguments are escaped (argument injection), `rmDirRecursiveAsync` does not use a shell anymore
   - Optimization: cache regular expressions used by `formatN`/`formatC`
