@@ -460,6 +460,45 @@ function hideEnd () {
 }
 
 /**
+ * Remove the element (table row, paragraph or table) which contains the marker, if the condition is true.
+ * The marker is analyzed before the data are injected (see parser.expandDropKeepMarkers), and it is replaced by a
+ * conditional block (hideBegin/hideEnd). This function is only called if the marker is not inside the wanted element,
+ * or if the element is unknown.
+ *
+ * Available elements: `row`, `p`, `table`. The optional second parameter is the number of consecutive elements to remove.
+ *
+ * @version 3.5.7 new
+ * @example ["{d.isHidden:ifEQ(true):drop(row)}", "row"]
+ * @example ["{d.count:ifGT(0):drop(p, 2)}", "p"]
+ *
+ * @param  {Mixed}  d        data
+ * @param  {String} element  `row`, `p` or `table`
+ * @param  {Number} count    [optional] number of consecutive elements to remove (1 by default)
+ * @return {Mixed}           never returns, it throws an error
+ */
+function drop (d, element) {
+  throw new Error('Formatter "drop(' + (element || '') + ')" must be inside a "row", "p" or "table" element of the template. Available elements: row, p, table');
+}
+
+/**
+ * Keep the element (table row, paragraph or table) which contains the marker only if the condition is true, and remove it otherwise.
+ * It is the opposite of `drop`.
+ *
+ * Available elements: `row`, `p`, `table`. The optional second parameter is the number of consecutive elements to keep or remove.
+ *
+ * @version 3.5.7 new
+ * @example ["{d.isVisible:ifEQ(true):keep(row)}", "row"]
+ *
+ * @param  {Mixed}  d        data
+ * @param  {String} element  `row`, `p` or `table`
+ * @param  {Number} count    [optional] number of consecutive elements (1 by default)
+ * @return {Mixed}           never returns, it throws an error
+ */
+function keep (d, element) {
+  throw new Error('Formatter "keep(' + (element || '') + ')" must be inside a "row", "p" or "table" element of the template. Available elements: row, p, table');
+}
+
+/**
  * Returns the length of a string or array.
  *
  * @version 2.0.0
@@ -620,5 +659,7 @@ module.exports = {
   elseShow,
   and,
   or,
-  len
+  len,
+  drop,
+  keep
 };

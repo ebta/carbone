@@ -42,7 +42,9 @@ empty array, `aggAvg/Min/Max` print nothing. Filters inside brackets (`[price>5]
 brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 
 ## Phase 3: document-format dependent features (DOCX, ODT, XLSX, ODS, PPTX, ODP)
-- [ ] `drop`, `keep` (remove/keep a document element: row, paragraph, page, table, ...)
+- [x] `drop`, `keep`: remove/keep a `row`, `p` (paragraph) or `table`. Example: `{d.hide:ifEQ(true):drop(row)}`, `{d.visible:ifEQ(true):keep(p)}`, `drop(row, 2)` for 2 consecutive rows.
+  The marker can be anywhere inside the element, also in a loop. It is rewritten into a `hideBegin/hideEnd` (or `showBegin/showEnd`) block.
+  Not done yet: other elements (slide, page, image, shape, list item, sheet)
 - [ ] `color`: inject colors in cells, rows, shapes
 - [ ] `html`: render HTML as native formatting (ODT, DOCX)
 - [ ] Dynamic images (URL / base64) and `imageFit`
