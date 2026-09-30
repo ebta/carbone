@@ -50,7 +50,11 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
   Not done yet: ODT, ODS, XLSX, PPTX, ODP (colors are stored in styles), shapes, borders
 - [ ] `html`: render HTML as native formatting (ODT, DOCX)
-- [ ] Dynamic images (URL / base64) and `imageFit`
+- [x] Dynamic images (DOCX only) and `imageFit`. Put a picture in the template as a placeholder, and write the marker in its alternative text
+  (Word: right click > View Alt Text): `{d.logo}` or `{d.logo:imageFit(fillWidth)}`. The value is a public URL or a base64 data URI (png, jpeg, gif).
+  `imageFit`: `contain` (default, whole image, ratio kept), `fillWidth` (width of the placeholder, ratio kept), `fill` (stretched). An empty value removes the picture.
+  Options of `carbone.set`: `imageDownloadTimeout` (ms, 10000), `imageMaxSize` (bytes, 10 MB), `imageAllowPrivateNetwork` (false: URLs of local/private networks are refused).
+  Not done yet: ODT, ODS, XLSX, PPTX, ODP, SVG and WebP images, images in headers/footers of other formats
 - [ ] Barcodes (`barcode`)
 - [ ] Charts, hyperlinks, PDF options (append/attach files, forms)
 
