@@ -56,7 +56,11 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   Options of `carbone.set`: `imageDownloadTimeout` (ms, 10000), `imageMaxSize` (bytes, 10 MB), `imageAllowPrivateNetwork` (false: URLs of local/private networks are refused).
   In ODF files, write the marker in the description of the picture (LibreOffice: right click > Properties > Description).
   Not done yet: XLSX, PPTX, SVG and WebP images
-- [ ] Barcodes (`barcode`)
+- [x] Barcodes: `{d.code:barcode(type, scale, errorCorrection)}` in the alternative text of a picture (DOCX, ODT, same code as dynamic images).
+  Types: `qrcode` (any text, UTF-8), `code128` (ASCII 32 to 126, digits are compressed), `ean13` (12 digits: check digit added, 13 digits: check digit verified).
+  `scale`: pixels by module (1 to 30, default 8 for QR codes and 3 for others), `errorCorrection`: `L`, `M` (default), `Q`, `H` for QR codes.
+  Chain `imageFit` after it to choose the size: `{d.code:barcode(qrcode):imageFit(contain)}`. An empty value removes the picture.
+  Not done yet: other types (the Enterprise Edition has more than 100: Code 39, EAN-8, Data Matrix, PDF417, ...), XLSX and PPTX
 - [x] Dynamic hyperlinks: the address of the link is a marker, `{d.url}` or `https://shop.com/{d.id}` (an editor can store it as `%7Bd.url%7D`, it is decoded).
   DOCX and PPTX (relationships are created for each URL, so each row of a loop can have its own link) and ODF (ODT, ODS, ODP). Only `http`, `https`, `mailto`, `tel`, `ftp`, `sms`
   and relative links are accepted, other schemes (`javascript:`, `data:`, ...) remove the link and keep the text. Tested: DOCX, ODT. PPTX, ODS, ODP: same code, unit tests only.
