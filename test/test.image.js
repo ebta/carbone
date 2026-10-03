@@ -292,6 +292,125 @@ describe('dynamic images', function () {
     });
   });
 
+  describe('PPTX and XLSX', function () {
+    function pptxPicture (id, descr, cx, cy) {
+      return '<p:pic><p:nvPicPr><p:cNvPr id="' + id + '" name="Picture ' + id + '" descr="' + descr + '"/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/></p:blipFill>'
+        + '<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm></p:spPr></p:pic>';
+    }
+    function renderPackage (partName, body, data, callback) {
+      var _dir = partName.replace(/\/[^/]+$/, '');
+      var _file = partName.replace(/^.*\//, '');
+      var _template = {
+        isZipped   : true,
+        filename   : 'test',
+        embeddings : [],
+        files      : [
+          { name : '[Content_Types].xml', isMarked : true, parent : '', data : '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>' },
+          { name : partName, isMarked : true, parent : '', data : body },
+          { name : _dir + '/_rels/' + _file + '.rels', isMarked : true, parent : '', data : '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>' }
+        ]
+      };
+      carbone.render(_template, data, {}, function (err, result) {
+        if (err) {
+          return callback(err);
+        }
+        file.unzip(result, function (errUnzip, files) {
+          var _res = {};
+          (files || []).forEach(function (f) {
+            _res[f.name] = f.data;
+          });
+          callback(errUnzip, _res);
+        });
+      });
+    }
+    var PPTX = 'ppt/slides/slide1.xml';
+    var XLSX = 'xl/drawings/drawing1.xml';
+
+    it('should move the marker of pictures of PPTX and XLSX (with or without namespace prefix)', function () {
+      helper.assert(image.expandImageMarkers('<p:pic><p:nvPicPr><p:cNvPr id="1" descr="{d.logo}"/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/></p:blipFill></p:pic>'),
+        '<p:pic><p:nvPicPr><p:cNvPr id="1" descr=""/></p:nvPicPr><p:blipFill><a:blip r:embed="{d.logo:_image}"/></p:blipFill></p:pic>');
+      helper.assert(image.expandImageMarkers('<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" descr="{d.logo}"/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId2"/></xdr:blipFill></xdr:pic>'),
+        '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" descr=""/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="{d.logo:_image}"/></xdr:blipFill></xdr:pic>');
+      helper.assert(image.expandImageMarkers('<pic><nvPicPr><cNvPr id="1" descr="{d.logo}"/></nvPicPr><blipFill><a:blip r:embed="rId2"/></blipFill></pic>'),
+        '<pic><nvPicPr><cNvPr id="1" descr=""/></nvPicPr><blipFill><a:blip r:embed="{d.logo:_image}"/></blipFill></pic>');
+    });
+    it('should not modify pictures with a normal alternative text', function () {
+      var _xml = '<p:pic><p:nvPicPr><p:cNvPr id="1" descr="Logo"/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/></p:blipFill></p:pic><pic><nvPicPr><cNvPr id="2" descr="Photo"/></nvPicPr><blipFill><a:blip r:embed="rId3"/></blipFill></pic>';
+      helper.assert(image.expandImageMarkers(_xml), _xml);
+    });
+
+    it('should replace pictures of a slide, resize them, and remove pictures without image', function (done) {
+      var _body = '<p:sld><p:cSld><p:spTree>' + pptxPicture(1, '{d.img}', 3000000, 1500000) + pptxPicture(2, '{d.portrait}', 2000000, 2000000)
+        + pptxPicture(3, '{d.portrait:imageFit(fill)}', 2000000, 2000000) + pptxPicture(4, '{d.portrait:imageFit(fillWidth)}', 2000000, 1000000) + pptxPicture(5, '{d.missing}', 1000000, 1000000) + '</p:spTree></p:cSld></p:sld>';
+      renderPackage(PPTX, _body, { img : toUri(buildPng(160, 80)), portrait : toUri(buildPng(60, 120)) }, function (err, files) {
+        helper.assert(err, null);
+        var _xml = files[PPTX].toString();
+        helper.assert(_xml.match(/<a:ext cx="\d+" cy="\d+"\/>/g), [
+          '<a:ext cx="3000000" cy="1500000"/>', '<a:ext cx="1000000" cy="2000000"/>', '<a:ext cx="2000000" cy="2000000"/>', '<a:ext cx="2000000" cy="4000000"/>'
+        ]);
+        helper.assert(_xml.match(/<p:pic>/g).length, 4);
+        assert.ok(_xml.indexOf('CARBONE_IMG') === -1);
+        helper.assert(Object.keys(files).filter(function (n) { return /^ppt\/media\/carbone_.*\.png$/.test(n); }).length, 2);
+        // slide and media are in sibling directories
+        assert.ok(/Target="\.\.\/media\/carbone_\w+\.png"/.test(files['ppt/slides/_rels/slide1.xml.rels'].toString()));
+        done();
+      });
+    });
+
+    function xlsxOneCell (id, descr, cx, cy, prefix) {
+      var _p = prefix ? 'xdr:' : '';
+      return '<' + _p + 'oneCellAnchor><' + _p + 'from><' + _p + 'col>1</' + _p + 'col><' + _p + 'row>2</' + _p + 'row></' + _p + 'from><' + _p + 'ext cx="' + cx + '" cy="' + cy + '"/>'
+        + '<' + _p + 'pic><' + _p + 'nvPicPr><' + _p + 'cNvPr id="' + id + '" descr="' + descr + '"/></' + _p + 'nvPicPr><' + _p + 'blipFill><a:blip r:embed="rId1"/></' + _p + 'blipFill></' + _p + 'pic></' + _p + 'oneCellAnchor>';
+    }
+    function xlsxTwoCell (id, descr, cx, cy) {
+      return '<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>1</xdr:col><xdr:row>2</xdr:row></xdr:from><xdr:to><xdr:col>5</xdr:col><xdr:row>9</xdr:row></xdr:to>'
+        + '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + id + '" descr="' + descr + '"/></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill>'
+        + '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>';
+    }
+
+    it('should replace pictures of a spreadsheet, with or without namespace prefix, and resize one cell anchors', function (done) {
+      var _data = { portrait : toUri(buildPng(60, 120)) };
+      var _plain = '<wsDr>' + xlsxOneCell(1, '{d.portrait}', 1905000, 952500, false) + xlsxOneCell(2, '{d.portrait:imageFit(fillWidth)}', 1000000, 500000, false) + '</wsDr>';
+      renderPackage(XLSX, _plain, _data, function (err, files) {
+        helper.assert(err, null);
+        var _xml = files[XLSX].toString();
+        helper.assert(_xml.match(/<ext cx="\d+" cy="\d+"\/>/g), ['<ext cx="476250" cy="952500"/>', '<ext cx="1000000" cy="2000000"/>']);
+        assert.ok(/Target="\.\.\/media\/carbone_\w+\.png"/.test(files['xl/drawings/_rels/drawing1.xml.rels'].toString()));
+        helper.assert(Object.keys(files).filter(function (n) { return /^xl\/media\/carbone_.*\.png$/.test(n); }).length, 1);
+        var _prefixed = '<xdr:wsDr>' + xlsxOneCell(1, '{d.portrait}', 1905000, 952500, true) + '</xdr:wsDr>';
+        renderPackage(XLSX, _prefixed, _data, function (err, files) {
+          helper.assert(err, null);
+          helper.assert(files[XLSX].toString().match(/<xdr:ext cx="\d+" cy="\d+"\/>/g), ['<xdr:ext cx="476250" cy="952500"/>']);
+          done();
+        });
+      });
+    });
+    it('should convert a two cell anchor into a one cell anchor to resize it, and keep it with fill', function (done) {
+      var _body = '<xdr:wsDr xmlns:xdr="x">' + xlsxTwoCell(1, '{d.portrait}', 1905000, 952500) + xlsxTwoCell(2, '{d.portrait:imageFit(fill)}', 1905000, 952500) + '</xdr:wsDr>';
+      renderPackage(XLSX, _body, { portrait : toUri(buildPng(60, 120)) }, function (err, files) {
+        helper.assert(err, null);
+        var _xml = files[XLSX].toString();
+        helper.assert(_xml.match(/<xdr:(oneCellAnchor|twoCellAnchor)\b[^>]*>/g), ['<xdr:oneCellAnchor>', '<xdr:twoCellAnchor editAs="oneCell">']);
+        helper.assert(_xml.match(/<xdr:ext cx="\d+" cy="\d+"\/>/g), ['<xdr:ext cx="476250" cy="952500"/>']);
+        helper.assert(_xml.match(/<xdr:to>/g).length, 1);
+        helper.assert(_xml.match(/<\/xdr:oneCellAnchor>/g).length, 1);
+        helper.assert(_xml.match(/<a:ext cx="\d+" cy="\d+"\/>/g), ['<a:ext cx="476250" cy="952500"/>', '<a:ext cx="1905000" cy="952500"/>']);
+        done();
+      });
+    });
+    it('should remove the whole anchor of a picture without image, and return errors for invalid images', function (done) {
+      var _body = '<wsDr>' + xlsxOneCell(1, '{d.missing}', 100, 100, false) + xlsxOneCell(2, '{d.img}', 100, 100, false) + '</wsDr>';
+      renderPackage(XLSX, _body, { img : toUri(buildPng(10, 10)) }, function (err, files) {
+        helper.assert(err, null);
+        helper.assert(files[XLSX].toString().match(/<oneCellAnchor>/g).length, 1);
+        renderPackage(XLSX, _body, { img : 'data:image/png;base64,AAAA' }, function (err) {
+          assert.ok(/Cannot load the image/.test(err.message));
+          done();
+        });
+      });
+    });
+  });
+
   describe('isPrivateAddress', function () {
     it('should detect private, local and reserved addresses', function () {
       ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', 'not-an-ip'].forEach(function (ip) {

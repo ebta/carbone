@@ -50,12 +50,14 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
   ODT: a style is created for each color after data injection, as a copy of the original style of the paragraph or cell (borders, padding, alignment are kept).
   Not done yet: ODS, XLSX, PPTX, ODP (the styles of spreadsheets and presentations are organized differently), shapes, borders
-- [x] Dynamic images (DOCX and ODT, same code for ODS and ODP but not tested) and `imageFit`. Put a picture in the template as a placeholder, and write the marker in its alternative text
+- [x] Dynamic images (DOCX, ODT, PPTX and XLSX; same code for ODS and ODP but not tested) and `imageFit`. Put a picture in the template as a placeholder, and write the marker in its alternative text
   (Word: right click > View Alt Text): `{d.logo}` or `{d.logo:imageFit(fillWidth)}`. The value is a public URL or a base64 data URI (png, jpeg, gif).
   `imageFit`: `contain` (default, whole image, ratio kept), `fillWidth` (width of the placeholder, ratio kept), `fill` (stretched). An empty value removes the picture.
   Options of `carbone.set`: `imageDownloadTimeout` (ms, 10000), `imageMaxSize` (bytes, 10 MB), `imageAllowPrivateNetwork` (false: URLs of local/private networks are refused).
   In ODF files, write the marker in the description of the picture (LibreOffice: right click > Properties > Description).
-  Not done yet: XLSX, PPTX, SVG and WebP images
+  PPTX: marker in the alternative text of the picture. XLSX: same, a picture is anchored on cells, so it is not repeated in a loop (one picture, one marker);
+  with `contain` and `fillWidth` a two cell anchor is converted into a one cell anchor, with `fill` the picture fills the cells.
+  Not done yet: SVG and WebP images, pictures repeated in a loop in a spreadsheet
 - [x] Barcodes: `{d.code:barcode(type, scale, errorCorrection)}` in the alternative text of a picture (DOCX, ODT, same code as dynamic images).
   Types: `qrcode` (any text, UTF-8), `code128` (ASCII 32 to 126, digits are compressed), `ean13` (12 digits: check digit added, 13 digits: check digit verified).
   `scale`: pixels by module (1 to 30, default 8 for QR codes and 3 for others), `errorCorrection`: `L`, `M` (default), `Q`, `H` for QR codes.
