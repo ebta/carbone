@@ -50,6 +50,10 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
   ODT: a style is created for each color after data injection, as a copy of the original style of the paragraph or cell (borders, padding, alignment are kept).
   Not done yet: ODS, XLSX, PPTX, ODP (the styles of spreadsheets and presentations are organized differently), shapes, borders
+- [x] `html`: `{d.richText:html}` renders HTML as native formatting in DOCX and ODT. Supported: `b`, `strong`, `i`, `em`, `u`, `s`, `del`, `sup`, `sub`, `a` (http, https, mailto, tel, ftp, sms),
+  `br`, `p`, `div`, `h1`-`h6` (bold), `ul`, `ol`, `li` (nested lists are indented), `table` (cells separated by tabs), `pre`, and the inline styles font-weight, font-style and text-decoration.
+  Blocks are separated by line breaks (it works anywhere, also in a table cell), the font of the marker is kept. Other formats receive the text without tags.
+  Not done yet: colors and sizes (`color`, `font-size`), images, real paragraphs, real lists (numbering of Word), real tables, other formats (ODS, XLSX, PPTX, HTML, Markdown)
 - [x] Dynamic images (DOCX, ODT, PPTX and XLSX; same code for ODS and ODP but not tested) and `imageFit`. Put a picture in the template as a placeholder, and write the marker in its alternative text
   (Word: right click > View Alt Text): `{d.logo}` or `{d.logo:imageFit(fillWidth)}`. The value is a public URL or a base64 data URI (png, jpeg, gif).
   `imageFit`: `contain` (default, whole image, ratio kept), `fillWidth` (width of the placeholder, ratio kept), `fill` (stretched). An empty value removes the picture.
@@ -58,11 +62,11 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   PPTX: marker in the alternative text of the picture. XLSX: same, a picture is anchored on cells, so it is not repeated in a loop (one picture, one marker);
   with `contain` and `fillWidth` a two cell anchor is converted into a one cell anchor, with `fill` the picture fills the cells.
   Not done yet: SVG and WebP images, pictures repeated in a loop in a spreadsheet
-- [x] Barcodes: `{d.code:barcode(type, scale, errorCorrection)}` in the alternative text of a picture (DOCX, ODT, same code as dynamic images).
+- [x] Barcodes: `{d.code:barcode(type, scale, errorCorrection)}` in the alternative text of a picture (DOCX, ODT, PPTX, XLSX: same code as dynamic images).
   Types: `qrcode` (any text, UTF-8), `code128` (ASCII 32 to 126, digits are compressed), `ean13` (12 digits: check digit added, 13 digits: check digit verified).
   `scale`: pixels by module (1 to 30, default 8 for QR codes and 3 for others), `errorCorrection`: `L`, `M` (default), `Q`, `H` for QR codes.
   Chain `imageFit` after it to choose the size: `{d.code:barcode(qrcode):imageFit(contain)}`. An empty value removes the picture.
-  Not done yet: other types (the Enterprise Edition has more than 100: Code 39, EAN-8, Data Matrix, PDF417, ...), XLSX and PPTX
+  Not done yet: other types (the Enterprise Edition has more than 100: Code 39, EAN-8, Data Matrix, PDF417, ...)
 - [x] Dynamic hyperlinks: the address of the link is a marker, `{d.url}` or `https://shop.com/{d.id}` (an editor can store it as `%7Bd.url%7D`, it is decoded).
   DOCX and PPTX (relationships are created for each URL, so each row of a loop can have its own link) and ODF (ODT, ODS, ODP). Only `http`, `https`, `mailto`, `tel`, `ftp`, `sms`
   and relative links are accepted, other schemes (`javascript:`, `data:`, ...) remove the link and keep the text. Tested: DOCX, ODT. PPTX, ODS, ODP: same code, unit tests only.
