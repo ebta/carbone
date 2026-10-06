@@ -1,3 +1,8 @@
+### v3.8.2 (dev-itg)
+  - Merge of upstream v3.8.2 into this fork. Package version follows upstream 3.8.2 (the previous fork version 3.5.7 was lower).
+  - Converter messages are JSON, as in upstream. This replaces the fork's shell-argument escaping and still blocks argument injection. Document closing on conversion failure is kept.
+  - Zip bomb protection (`maxTemplateUncompressedSize`, 200 MB) is kept. Unzip still reports an error only once.
+
 ### v3.5.7 (dev-itg)
   - Independent implementation of features available in Carbone Enterprise, written from the public documentation (no Enterprise code). See doc/ROADMAP.md
   - New formatters (phase 1)
@@ -25,6 +30,12 @@
   - Optimization: cache regular expressions used by `formatN`/`formatC`
   - `npm test` sets `TZ=Europe/Paris`
 
+
+### v3.8.2
+  - Release: April 3rd 2026
+  - Fix a critical security issue identified in a recent audit
+  - Add limits `maxTemplateUncompressedSize` (200 MB by default) for unzipped templates to improve resistance to zip bomb denial-of-service attacks
+  - Align the version published on npm with the Enterprise Edition version. All fixes between v3.5.6 and v3.8.2 do not affect the npm version, but we are aligning the version numbers for simplicity.
 
 ### v3.5.6
   - Release June 12th 2024
