@@ -147,6 +147,15 @@ describe('color', function () {
       var _xml = '<w:p><w:r><w:t>a{d.c:color(p, text)}</w:t></w:r></w:p>';
       helper.assert(color.expandOdfColorMarkers(_xml), _xml);
     });
+    it('should use the style of the cell for the text color in a spreadsheet, and the paragraphs in a text document', function () {
+      var _cell = '<table:table-cell table:style-name="ce1"><text:p>a{d.c:color(cell, text)}</text:p></table:table-cell>';
+      helper.assert(color.expandOdfColorMarkers('<office:spreadsheet><table:table-row>' + _cell + '</table:table-row></office:spreadsheet>'),
+        '<office:spreadsheet><table:table-row><table:table-cell table:style-name="ce1' + T('text') + '"><text:p>a</text:p></table:table-cell></table:table-row></office:spreadsheet>');
+      helper.assert(color.expandOdfColorMarkers('<office:spreadsheet><table:table-row><table:table-cell><text:p>a{d.c:color(row, text)}</text:p></table:table-cell><table:table-cell/></table:table-row></office:spreadsheet>'),
+        '<office:spreadsheet><table:table-row><table:table-cell table:style-name="' + T('text') + '"><text:p>a</text:p></table:table-cell><table:table-cell table:style-name="' + T('text') + '"/></table:table-row></office:spreadsheet>');
+      helper.assert(color.expandOdfColorMarkers('<office:text>' + _cell + '</office:text>'),
+        '<office:text><table:table-cell table:style-name="ce1"><text:p text:style-name="' + T('text') + '">a</text:p></table:table-cell></office:text>');
+    });
   });
 
   describe('in an odt', function () {
@@ -414,6 +423,55 @@ describe('color', function () {
     it('should return a clear error if the marker is not in a xlsx cell or row', function (done) {
       carbone.renderXML('<c>a{d.c:color(banana, text)}</c>', { c : 'red' }, { lang : 'en' }, function (err) {
         assert.ok(/only available for docx, odt and xlsx templates/.test(err.message));
+        done();
+      });
+    });
+  });
+
+  describe('in an ods', function () {
+    var AUTO = '<office:automatic-styles><style:style style:name="ce1" style:family="table-cell" style:parent-style-name="Default"><style:table-cell-properties fo:border="0.74pt solid #000000"/><style:text-properties fo:font-style="italic"/></style:style></office:automatic-styles>';
+    function render (body, data, callback) {
+      var _template = {
+        isZipped   : true,
+        filename   : 'test.ods',
+        embeddings : [],
+        files      : [
+          { name : 'mimetype', isMarked : false, parent : '', data : Buffer.from('application/vnd.oasis.opendocument.spreadsheet') },
+          { name : 'content.xml', isMarked : true, parent : '', data : '<office:document-content xmlns:office="o" xmlns:text="t" xmlns:table="b" xmlns:style="s" xmlns:fo="f">' + AUTO + '<office:body><office:spreadsheet>' + body + '</office:spreadsheet></office:body></office:document-content>' }
+        ]
+      };
+      carbone.render(_template, data, {}, function (err, result) {
+        if (err) {
+          return callback(err);
+        }
+        file.unzip(result, function (errUnzip, files) {
+          callback(errUnzip, files.filter(function (f) { return f.name === 'content.xml'; })[0].data.toString());
+        });
+      });
+    }
+    it('should put the text color and the background in the style of the cell, and keep its other properties', function (done) {
+      var _body = '<table:table><table:table-row><table:table-cell table:style-name="ce1"><text:p>{d.n}{d.bg:color(cell, background)}{d.tc:color(cell, text)}</text:p></table:table-cell></table:table-row></table:table>';
+      render(_body, { n : 'a', bg : '#00FF00', tc : '#FF0000' }, function (err, xml) {
+        helper.assert(err, null);
+        var _name = /<table:table-cell table:style-name="(CarboneC\w+)"/.exec(xml)[1];
+        var _style = new RegExp('<style:style style:name="' + _name + '"[\\s\\S]*?</style:style>').exec(xml)[0];
+        assert.ok(_style.indexOf('fo:border="0.74pt solid #000000"') !== -1 && _style.indexOf('fo:background-color="#00FF00"') !== -1);
+        assert.ok(_style.indexOf('fo:font-style="italic"') !== -1 && _style.indexOf('fo:color="#FF0000"') !== -1);
+        assert.ok(_style.indexOf('style:parent-style-name="Default"') !== -1);
+        assert.ok(xml.indexOf('<text:p>a</text:p>') !== -1, 'the paragraph is not modified');
+        done();
+      });
+    });
+    it('should color all cells of a row, in a loop', function (done) {
+      var _body = '<table:table><table:table-row><table:table-cell table:style-name="ce1"><text:p>{d.items[i].n}{d.items[i].c:color(row, background)}</text:p></table:table-cell><table:table-cell table:style-name="ce1"><text:p>{d.items[i].s}</text:p></table:table-cell></table:table-row>'
+        + '<table:table-row><table:table-cell><text:p>{d.items[i+1].n}</text:p></table:table-cell><table:table-cell><text:p>{d.items[i+1].s}</text:p></table:table-cell></table:table-row></table:table>';
+      render(_body, { items : [{ n : 'a', s : 'x', c : '#FF0000' }, { n : 'b', s : 'y', c : 'invalid' }] }, function (err, xml) {
+        helper.assert(err, null);
+        var _names = xml.match(/<table:table-cell table:style-name="([^"]*)"/g).map(function (m) { return /"([^"]*)"/.exec(m)[1]; });
+        helper.assert(_names.length, 4);
+        helper.assert(_names[0], _names[1]);
+        assert.ok(/^CarboneC/.test(_names[0]));
+        helper.assert([_names[2], _names[3]], ['ce1', 'ce1']);
         done();
       });
     });
