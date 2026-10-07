@@ -275,7 +275,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row', function (done) {
       render('text {d.c:color(row, text)}', { c : 'red' }, function (err) {
-        assert.ok(/only available for docx, odt and xlsx templates/.test(err.message));
+        assert.ok(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message));
         done();
       });
     });
@@ -422,7 +422,122 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not in a xlsx cell or row', function (done) {
       carbone.renderXML('<c>a{d.c:color(banana, text)}</c>', { c : 'red' }, { lang : 'en' }, function (err) {
-        assert.ok(/only available for docx, odt and xlsx templates/.test(err.message));
+        assert.ok(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message));
+        done();
+      });
+    });
+  });
+
+  describe('expandPptxColorMarkers', function () {
+    var FILL = function (marker, id) {
+      return '<a:solidFill><a:srgbClr val="{' + marker + ':_pptxColor(\'' + id + '\')}"/></a:solidFill>';
+    };
+    it('should do nothing without color marker or options', function () {
+      helper.assert(color.expandPptxColorMarkers('<a:p>{d.id}</a:p>', {}), '<a:p>{d.id}</a:p>');
+      helper.assert(color.expandPptxColorMarkers('<a:p><a:r><a:t>a{d.c:color(p, text)}</a:t></a:r></a:p>'), '<a:p><a:r><a:t>a{d.c:color(p, text)}</a:t></a:r></a:p>');
+      helper.assert(color.expandPptxColorMarkers(null, {}), null);
+    });
+    it('should set the color of all runs of a paragraph, create or update the properties of the run, and keep the order of the schema', function () {
+      var _options = {};
+      var _xml = '<a:p><a:r><a:t>a{d.c:color(p, text)}</a:t></a:r><a:r><a:rPr lang="en-US"/><a:t>b</a:t></a:r><a:r><a:rPr sz="2800" b="1"><a:latin typeface="Arial"/></a:rPr><a:t>c</a:t></a:r><a:r><a:rPr><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:rPr><a:t>d</a:t></a:r></a:p>';
+      helper.assert(color.expandPptxColorMarkers(_xml, _options),
+        '<a:p><a:r><a:rPr>' + FILL('d.c', 0) + '</a:rPr><a:t>a</a:t></a:r><a:r><a:rPr lang="en-US">' + FILL('d.c', 1) + '</a:rPr><a:t>b</a:t></a:r>'
+        + '<a:r><a:rPr sz="2800" b="1">' + FILL('d.c', 2) + '<a:latin typeface="Arial"/></a:rPr><a:t>c</a:t></a:r><a:r><a:rPr>' + FILL('d.c', 3) + '</a:rPr><a:t>d</a:t></a:r></a:p>');
+      helper.assert(_options.pptxFills, ['', '', '', '<a:solidFill><a:srgbClr val="000000"/></a:solidFill>']);
+    });
+    it('should set the fill of a cell, after the borders, and create the properties of the cell at the end', function () {
+      var _options = {};
+      helper.assert(color.expandPptxColorMarkers('<a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(cell, background)}</a:t></a:r></a:p></a:txBody><a:tcPr marL="1"><a:lnL w="1"/><a:lnR w="1"/></a:tcPr></a:tc>', _options),
+        '<a:tc><a:txBody><a:p><a:r><a:t>a</a:t></a:r></a:p></a:txBody><a:tcPr marL="1"><a:lnL w="1"/><a:lnR w="1"/>' + FILL('d.c', 0) + '</a:tcPr></a:tc>');
+      helper.assert(color.expandPptxColorMarkers('<a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(cell, background)}</a:t></a:r></a:p></a:txBody></a:tc>', {}),
+        '<a:tc><a:txBody><a:p><a:r><a:t>a</a:t></a:r></a:p></a:txBody><a:tcPr>' + FILL('d.c', 0) + '</a:tcPr></a:tc>');
+      helper.assert(color.expandPptxColorMarkers('<a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(cell, background)}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>', {}),
+        '<a:tc><a:txBody><a:p><a:r><a:t>a</a:t></a:r></a:p></a:txBody><a:tcPr>' + FILL('d.c', 0) + '</a:tcPr></a:tc>');
+    });
+    it('should replace the existing fill of a cell and save it', function () {
+      var _options = {};
+      var _xml = color.expandPptxColorMarkers('<a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(cell, background)}</a:t></a:r></a:p></a:txBody><a:tcPr><a:gradFill/><a:headers/></a:tcPr></a:tc>', _options);
+      assert.ok(_xml.indexOf('<a:tcPr>' + FILL('d.c', 0) + '<a:headers/></a:tcPr>') !== -1);
+      helper.assert(_options.pptxFills, ['<a:gradFill/>']);
+    });
+    it('should set the fill of all cells of a row, the text of a row and the text of a cell', function () {
+      var _row = '<a:tr><a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(row, background)}</a:t></a:r></a:p></a:txBody></a:tc><a:tc><a:txBody><a:p><a:r><a:t>b</a:t></a:r></a:p></a:txBody></a:tc></a:tr>';
+      var _xml = color.expandPptxColorMarkers(_row, {});
+      helper.assert(_xml.match(/<a:tcPr>/g).length, 2);
+      _xml = color.expandPptxColorMarkers(_row.replace('color(row, background)', 'color(row, text)'), {});
+      helper.assert(_xml.match(/<a:rPr>/g).length, 2);
+      _xml = color.expandPptxColorMarkers('<a:tc><a:txBody><a:p><a:r><a:t>a{d.c:color(cell, text)}</a:t></a:r></a:p><a:p><a:r><a:t>b</a:t></a:r></a:p></a:txBody></a:tc>', {});
+      helper.assert(_xml.match(/<a:rPr>/g).length, 2);
+    });
+    it('should set the fill of a shape, after the geometry and before the border', function () {
+      var _options = {};
+      helper.assert(color.expandPptxColorMarkers('<p:sp><p:spPr><a:xfrm/><a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="4472C4"/></a:solidFill><a:ln/></p:spPr><p:txBody><a:p><a:r><a:t>a{d.c:color(shape, background)}</a:t></a:r></a:p></p:txBody></p:sp>', _options),
+        '<p:sp><p:spPr><a:xfrm/><a:prstGeom prst="rect"/>' + FILL('d.c', 0) + '<a:ln/></p:spPr><p:txBody><a:p><a:r><a:t>a</a:t></a:r></a:p></p:txBody></p:sp>');
+      helper.assert(_options.pptxFills, ['<a:solidFill><a:srgbClr val="4472C4"/></a:solidFill>']);
+      var _text = color.expandPptxColorMarkers('<p:sp><p:spPr/><p:txBody><a:p><a:r><a:t>a{d.c:color(shape, text)}</a:t></a:r></a:p></p:txBody></p:sp>', {});
+      assert.ok(_text.indexOf('<a:rPr>' + FILL('d.c', 0) + '</a:rPr>') !== -1);
+    });
+    it('should not modify unsupported markers', function () {
+      var _xml = '<a:p><a:r><a:t>a{d.c:color(p, background)}</a:t></a:r></a:p><a:p><a:r><a:t>b{d.c:color(banana, text)}</a:t></a:r></a:p><a:p><a:r><a:t>c{d.c:color(cell, border)}</a:t></a:r></a:p>';
+      helper.assert(color.expandPptxColorMarkers(_xml, {}), _xml);
+      var _noProps = '<p:sp><p:txBody><a:p><a:r><a:t>a{d.c:color(shape, background)}</a:t></a:r></a:p></p:txBody></p:sp>';
+      helper.assert(color.expandPptxColorMarkers(_noProps, {}), _noProps);
+    });
+  });
+
+  describe('resolvePptxColors', function () {
+    it('should put back the original fill where the color is not valid, and remove the fill if there is no original fill', function () {
+      var _report = { files : [{ name : 'ppt/slides/slide1.xml', data : '<a:rPr><a:solidFill><a:srgbClr val="CARBONE_PC_0"/></a:solidFill></a:rPr><a:rPr><a:solidFill><a:srgbClr val="CARBONE_PC_1"/></a:solidFill></a:rPr><a:rPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:rPr>' }] };
+      color.resolvePptxColors(_report, { pptxFills : ['<a:solidFill><a:srgbClr val="000000"/></a:solidFill>', ''] });
+      helper.assert(_report.files[0].data, '<a:rPr><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:rPr><a:rPr></a:rPr><a:rPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:rPr>');
+      color.resolvePptxColors(null, {});
+      color.resolvePptxColors({ files : [] }, {});
+    });
+  });
+
+  describe('in a pptx', function () {
+    function render (body, data, callback) {
+      var _template = {
+        isZipped   : true,
+        filename   : 'test.pptx',
+        embeddings : [],
+        files      : [
+          { name : '[Content_Types].xml', isMarked : true, parent : '', data : '<Types/>' },
+          { name : 'ppt/slides/slide1.xml', isMarked : true, parent : '', data : '<p:sld><p:cSld><p:spTree>' + body + '</p:spTree></p:cSld></p:sld>' }
+        ]
+      };
+      carbone.render(_template, data, {}, function (err, result) {
+        if (err) {
+          return callback(err);
+        }
+        file.unzip(result, function (errUnzip, files) {
+          callback(errUnzip, files.filter(function (f) { return f.name === 'ppt/slides/slide1.xml'; })[0].data.toString());
+        });
+      });
+    }
+    var SHAPE = '<p:sp><p:spPr><a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="FFC000"/></a:solidFill></p:spPr><p:txBody><a:p><a:r><a:rPr b="1"/><a:t>text{d.bg:color(shape, background)}{d.tc:color(shape, text)}</a:t></a:r></a:p></p:txBody></p:sp>';
+    it('should print colors, keep the other properties of runs, and replace the fill of the shape', function (done) {
+      render(SHAPE, { bg : '#00B050', tc : 'white' }, function (err, xml) {
+        helper.assert(err, null);
+        assert.ok(xml.indexOf('<a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="00B050"/></a:solidFill></p:spPr>') !== -1);
+        assert.ok(xml.indexOf('<a:rPr b="1"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr>') !== -1);
+        assert.ok(xml.indexOf('FFC000') === -1 && xml.indexOf('CARBONE_PC') === -1);
+        done();
+      });
+    });
+    it('should keep the original fill for invalid or missing colors', function (done) {
+      render(SHAPE.replace('<a:rPr b="1"/>', '<a:rPr b="1"><a:solidFill><a:srgbClr val="123456"/></a:solidFill></a:rPr>'), { bg : 'invalid' }, function (err, xml) {
+        helper.assert(err, null);
+        assert.ok(xml.indexOf('<a:prstGeom prst="rect"/><a:solidFill><a:srgbClr val="FFC000"/></a:solidFill></p:spPr>') !== -1);
+        assert.ok(xml.indexOf('<a:rPr b="1"><a:solidFill><a:srgbClr val="123456"/></a:solidFill></a:rPr>') !== -1);
+        assert.ok(xml.indexOf('CARBONE_PC') === -1);
+        done();
+      });
+    });
+    it('should not allow XML injection through the color', function (done) {
+      render(SHAPE, { bg : '00B050"/><a:evil/><a:x val="', tc : '#FF0000' }, function (err, xml) {
+        helper.assert(err, null);
+        assert.ok(xml.indexOf('evil') === -1);
         done();
       });
     });
@@ -524,7 +639,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row of a docx', function (done) {
       carbone.renderXML('<text:span>a{d.c:color(p, text)}</text:span>', _data, { lang : 'en' }, function (err) {
-        helper.assert(/only available for docx, odt and xlsx templates/.test(err.message), true);
+        helper.assert(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message), true);
         carbone.renderXML('<w:p>a{d.c:color(banana, text)}</w:p>', _data, { lang : 'en' }, function (err) {
           helper.assert(/color\(banana, text\)/.test(err.message), true);
           done();

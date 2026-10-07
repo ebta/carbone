@@ -45,11 +45,16 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 - [x] `drop`, `keep`: remove/keep a `row`, `p` (paragraph) or `table`. Example: `{d.hide:ifEQ(true):drop(row)}`, `{d.visible:ifEQ(true):keep(p)}`, `drop(row, 2)` for 2 consecutive rows.
   The marker can be anywhere inside the element, also in a loop. It is rewritten into a `hideBegin/hideEnd` (or `showBegin/showEnd`) block.
   Not done yet: other elements (slide, page, image, shape, list item, sheet)
-- [x] `color` (DOCX and ODT): `{d.c:color(scope, type)}` with scope `p` (paragraph), `cell`, `row`, and type `text` or `background`.
+- [x] `color` (DOCX, ODT, ODS, XLSX and PPTX): `{d.c:color(scope, type)}` with a type `text` or `background`, and a scope:
+  `p` (paragraph, text only for PPTX), `cell`, `row` (DOCX, ODT, ODS, PPTX), `cell` and `row` (XLSX), `shape` (PPTX).
   The value can be `#RRGGBB`, `RRGGBB`, `#RGB`, `rgb(255,0,0)` or a basic color name (an invalid color gives the default color). It can be
   computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
-  ODT: a style is created for each color after data injection, as a copy of the original style of the paragraph or cell (borders, padding, alignment are kept).
-  Not done yet: ODS, XLSX, PPTX, ODP (the styles of spreadsheets and presentations are organized differently), shapes, borders
+  - DOCX: `w:color` and `w:shd` are added in the attributes, in the order of the schema.
+  - ODT, ODS: a style is created for each color after data injection, as a copy of the original style (borders, padding, alignment are kept).
+    In ODT the text color is set on the paragraphs of a cell, in ODS on the style of the cell.
+  - XLSX: fonts, fills and cell formats are created in `styles.xml` as copies of the original format (borders, number formats, alignment are kept), identical ones are stored once.
+  - PPTX: a fill is written in the properties of the runs, the cells (`a:tcPr`) or the shape. An invalid color puts back the original fill of the template.
+  Not done yet: ODP, borders, text color of a part of a paragraph, columns (`col`)
 - [x] `html`: `{d.richText:html}` renders HTML as native formatting in DOCX and ODT. Supported: `b`, `strong`, `i`, `em`, `u`, `s`, `del`, `sup`, `sub`, `a` (http, https, mailto, tel, ftp, sms),
   `br`, `p`, `div`, `h1`-`h6` (bold), `ul`, `ol`, `li` (nested lists are indented), `table` (cells separated by tabs), `pre`, and the inline styles font-weight, font-style and text-decoration.
   Blocks are separated by line breaks (it works anywhere, also in a table cell), the font of the marker is kept. Other formats receive the text without tags.
