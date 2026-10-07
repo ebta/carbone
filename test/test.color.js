@@ -266,7 +266,154 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row', function (done) {
       render('text {d.c:color(row, text)}', { c : 'red' }, function (err) {
-        assert.ok(/only available for docx and odt templates/.test(err.message));
+        assert.ok(/only available for docx, odt and xlsx templates/.test(err.message));
+        done();
+      });
+    });
+  });
+
+  describe('expandXlsxColorMarkers', function () {
+    var T = function (kind, marker) {
+      return '{' + (marker || 'd.c') + ':_xlsxColor(\'' + kind + '\')}';
+    };
+    function expand (xml, parent) {
+      var _template = { files : [{ name : 'xl/worksheets/sheet1.xml', data : xml, parent : parent || '' }, { name : 'xl/styles.xml', data : 'a{d.c:color(cell, text)}', parent : '' }] };
+      color.expandXlsxColorMarkers(_template, parent || '');
+      return _template;
+    }
+    it('should add an identifier in the style of the cell, or create the attribute', function () {
+      helper.assert(expand('<row><c s="3" t="inlineStr"><is><t>a{d.c:color(cell, background)}</t></is></c></row>').files[0].data,
+        '<row><c s="3' + T('background') + '" t="inlineStr"><is><t>a</t></is></c></row>');
+      helper.assert(expand('<row><c t="inlineStr"><is><t>a{d.c:color(cell, text)}</t></is></c></row>').files[0].data,
+        '<row><c s="' + T('text') + '" t="inlineStr"><is><t>a</t></is></c></row>');
+    });
+    it('should add identifiers of many markers in the same cell', function () {
+      helper.assert(expand('<c s="1"><is><t>a{d.t:color(cell, text)}{d.b:color(cell, background)}</t></is></c>').files[0].data,
+        '<c s="1' + T('text', 'd.t') + T('background', 'd.b') + '"><is><t>a</t></is></c>');
+    });
+    it('should add identifiers in all cells of a row, and not in other rows', function () {
+      var _xml = '<sheetData><row r="1"><c s="1"><is><t>x</t></is></c></row><row><c s="2"><is><t>a{d.c:color(row, background)}</t></is></c><c/><c s="4"/></row></sheetData>';
+      helper.assert(expand(_xml).files[0].data, '<sheetData><row r="1"><c s="1"><is><t>x</t></is></c></row><row><c s="2' + T('background') + '"><is><t>a</t></is></c><c s="' + T('background') + '"/><c s="4' + T('background') + '"/></row></sheetData>');
+    });
+    it('should not modify the markers which are not supported, or in other files', function () {
+      var _xml = '<row><c><is><t>a{d.c:color(p, text)}</t></is></c><c><is><t>b{d.c:color(cell, border)}</t></is></c><c><is><t>c{d.c:color(banana, text)}</t></is></c></row>';
+      helper.assert(expand(_xml).files[0].data, _xml);
+      helper.assert(expand('<c><is><t>a{d.c:color(cell, text)}</t></is></c>', 'embedded.xlsx').files[0].data.indexOf('_xlsxColor') !== -1, true);
+      helper.assert(expand('<c><is><t>a{d.c:color(cell, text)}</t></is></c>').files[1].data, 'a{d.c:color(cell, text)}');
+      color.expandXlsxColorMarkers(null, '');
+      color.expandXlsxColorMarkers({}, '');
+    });
+    it('should not confuse the cells with other tags starting with c', function () {
+      var _xml = '<cols><col min="1" max="1"/></cols><row><c><is><t>a{d.c:color(row, text)}</t></is></c></row><cfRule/>';
+      helper.assert(expand(_xml).files[0].data, '<cols><col min="1" max="1"/></cols><row><c s="' + T('text') + '"><is><t>a</t></is></c></row><cfRule/>');
+    });
+  });
+
+  describe('resolveXlsxColors', function () {
+    var STYLES = '<?xml version="1.0"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<fonts count="2"><font><sz val="11"/><color theme="1"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Arial"/></font></fonts>'
+      + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+      + '<borders count="1"><border/></borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment horizontal="right"/></xf></cellXfs>'
+      + '</styleSheet>';
+    function resolve (sheet, colors, styles) {
+      var _report = { files : [{ name : 'xl/worksheets/sheet1.xml', data : sheet, parent : '' }, { name : 'xl/styles.xml', data : styles === undefined ? STYLES : styles, parent : '' }] };
+      color.resolveXlsxColors(_report, { xlsxColors : colors });
+      return { sheet : _report.files[0].data, styles : _report.files[1].data };
+    }
+    it('should create a font, a fill and a cell format, which keep the properties of the original format', function () {
+      var _res = resolve('<c s="1CARBONE_XC_0CARBONE_XC_1"/>', [{ kind : 'text', color : 'FF0000' }, { kind : 'background', color : '00FF00' }]);
+      helper.assert(_res.sheet, '<c s="2"/>');
+      assert.ok(_res.styles.indexOf('<fonts count="3">') !== -1 && _res.styles.indexOf('<fills count="3">') !== -1 && _res.styles.indexOf('<cellXfs count="3">') !== -1);
+      assert.ok(_res.styles.indexOf('<font><b/><sz val="12"/><color rgb="FFFF0000"/><name val="Arial"/></font>') !== -1, 'the font is a copy, with the color at the right place');
+      assert.ok(_res.styles.indexOf('<fill><patternFill patternType="solid"><fgColor rgb="FF00FF00"/><bgColor indexed="64"/></patternFill></fill>') !== -1);
+      assert.ok(/<xf numFmtId="4" fontId="2" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"><alignment horizontal="right"\/><\/xf><\/cellXfs>/.test(_res.styles));
+      assert.ok(_res.styles.indexOf('<borders count="1"><border/></borders>') !== -1, 'other lists are not modified');
+    });
+    it('should replace the color of the font, and use the default format if the cell has no style', function () {
+      var _res = resolve('<c s="CARBONE_XC_0"/>', [{ kind : 'text', color : '0000FF' }]);
+      helper.assert(_res.sheet, '<c s="2"/>');
+      assert.ok(_res.styles.indexOf('<font><sz val="11"/><color rgb="FF0000FF"/><name val="Calibri"/></font>') !== -1, 'the color of the theme is replaced');
+      assert.ok(_res.styles.indexOf('<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>') !== -1);
+    });
+    it('should create one format for identical styles and colors', function () {
+      var _res = resolve('<c s="CARBONE_XC_0"/><c s="CARBONE_XC_1"/><c s="CARBONE_XC_2"/>', [{ kind : 'background', color : 'FF0000' }, { kind : 'background', color : 'FF0000' }, { kind : 'background', color : '00FF00' }]);
+      helper.assert(_res.sheet, '<c s="2"/><c s="2"/><c s="3"/>');
+      assert.ok(_res.styles.indexOf('<cellXfs count="4">') !== -1 && _res.styles.indexOf('<fills count="4">') !== -1);
+    });
+    it('should keep the original style for invalid colors, and remove the attribute if there is no style', function () {
+      var _res = resolve('<c s="1CARBONE_XC_0"/><c s="CARBONE_XC_1"/>', [{ kind : 'text', color : null }, { kind : 'background', color : null }]);
+      helper.assert(_res.sheet, '<c s="1"/><c/>');
+      helper.assert(_res.styles, STYLES);
+    });
+    it('should not fail without styles, or with other attributes in cells, and should not modify cells without identifier', function () {
+      helper.assert(resolve('<c s="1CARBONE_XC_0"/>', [{ kind : 'text', color : 'FF0000' }], '<styleSheet/>').sheet, '<c s="1"/>');
+      helper.assert(resolve('<c r="A1" t="inlineStr" s="1CARBONE_XC_0"><is/></c><c s="3" t="n"/>', [{ kind : 'text', color : 'FF0000' }]).sheet, '<c r="A1" t="inlineStr" s="2"><is/></c><c s="3" t="n"/>');
+      color.resolveXlsxColors(null, {});
+      color.resolveXlsxColors({ files : [] }, {});
+    });
+    it('should accept a self-closing font, and a style index out of range', function () {
+      var _styles = STYLES.replace('<font><sz val="11"/><color theme="1"/><name val="Calibri"/></font>', '<font/>');
+      var _res = resolve('<c s="CARBONE_XC_0"/><c s="99CARBONE_XC_0"/>', [{ kind : 'text', color : 'FF0000' }], _styles);
+      assert.ok(_res.styles.indexOf('<font><color rgb="FFFF0000"/></font>') !== -1);
+      helper.assert(_res.sheet, '<c s="2"/><c s="2"/>', 'same default format, so the same new format');
+    });
+  });
+
+  describe('in a xlsx', function () {
+    var STYLES = '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+      + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders>'
+      + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0"><alignment horizontal="right"/></xf></cellXfs></styleSheet>';
+    function render (sheet, strings, data, callback) {
+      var _template = {
+        isZipped   : true,
+        filename   : 'test.xlsx',
+        embeddings : [],
+        files      : [
+          { name : '[Content_Types].xml', isMarked : true, parent : '', data : '<Types/>' },
+          { name : 'xl/worksheets/sheet1.xml', isMarked : true, parent : '', data : '<worksheet><sheetData>' + sheet + '</sheetData></worksheet>' },
+          { name : 'xl/sharedStrings.xml', isMarked : true, parent : '', data : '<sst>' + strings + '</sst>' },
+          { name : 'xl/styles.xml', isMarked : true, parent : '', data : STYLES }
+        ]
+      };
+      carbone.render(_template, data, {}, function (err, result) {
+        if (err) {
+          return callback(err);
+        }
+        file.unzip(result, function (errUnzip, files) {
+          var _res = {};
+          files.forEach(function (f) {
+            _res[f.name] = f.data.toString();
+          });
+          callback(errUnzip, _res);
+        });
+      });
+    }
+    it('should color cells with markers written in shared strings, and in a loop', function (done) {
+      var _sheet = '<row r="1"><c r="A1" s="1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2" t="s"><v>3</v></c></row>';
+      var _strings = '<si><t>{d.items[i].n}{d.items[i].bg:color(row, background)}</t></si><si><t>{d.items[i].s}{d.items[i].tc:color(cell, text)}</t></si><si><t>{d.items[i+1].n}</t></si><si><t>{d.items[i+1].s}</t></si>';
+      var _data = { items : [{ n : 'a', s : 'x', bg : '#FF0000', tc : '#0000FF' }, { n : 'b', s : 'y', bg : 'invalid', tc : '#0000FF' }, { n : 'c', s : 'z', bg : '#FF0000', tc : 'invalid' }] };
+      render(_sheet, _strings, _data, function (err, files) {
+        helper.assert(err, null);
+        var _xml = files['xl/worksheets/sheet1.xml'];
+        assert.ok(_xml.indexOf('CARBONE_XC') === -1 && _xml.indexOf('color(') === -1);
+        var _cellStyles = _xml.match(/<c\b[^>]*>/g).map(function (tag) { return (/\ss="(\d+)"/.exec(tag) || [0, ''])[1]; });
+        // 3 rows of 2 cells. The first cell of the first and the third rows have the same style, the second row has an invalid background
+        helper.assert(_cellStyles.length, 6);
+        helper.assert(_cellStyles[0], _cellStyles[4]);
+        assert.notStrictEqual(_cellStyles[0], _cellStyles[2]);
+        helper.assert(_cellStyles[2], '1');
+        var _styles = files['xl/styles.xml'];
+        helper.assert(_styles.match(/<fill>/g).length, 3);
+        assert.ok(_styles.indexOf('<fgColor rgb="FFFF0000"/>') !== -1);
+        assert.ok(_styles.indexOf('<color rgb="FF0000FF"/>') !== -1);
+        done();
+      });
+    });
+    it('should return a clear error if the marker is not in a xlsx cell or row', function (done) {
+      carbone.renderXML('<c>a{d.c:color(banana, text)}</c>', { c : 'red' }, { lang : 'en' }, function (err) {
+        assert.ok(/only available for docx, odt and xlsx templates/.test(err.message));
         done();
       });
     });
@@ -319,7 +466,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row of a docx', function (done) {
       carbone.renderXML('<text:span>a{d.c:color(p, text)}</text:span>', _data, { lang : 'en' }, function (err) {
-        helper.assert(/only available for docx and odt templates/.test(err.message), true);
+        helper.assert(/only available for docx, odt and xlsx templates/.test(err.message), true);
         carbone.renderXML('<w:p>a{d.c:color(banana, text)}</w:p>', _data, { lang : 'en' }, function (err) {
           helper.assert(/color\(banana, text\)/.test(err.message), true);
           done();
