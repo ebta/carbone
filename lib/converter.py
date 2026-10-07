@@ -132,6 +132,16 @@ def convert(message):
     outputprops = UnoProps(FilterName=fileOption['format'], Overwrite=True)
     if fileOption.get('formatOptions', '') != '':
         outputprops += UnoProps(FilterOptions=fileOption['formatOptions'])
+    ### Export options of PDF, PNG and JPG (already checked by NodeJS). Only booleans, integers and texts are accepted
+    filterData = fileOption.get('filterData')
+    if isinstance(filterData, dict) and len(filterData) > 0:
+        filterProps = []
+        for key in filterData:
+            value = filterData[key]
+            if isinstance(value, (bool, int, str)) and isinstance(key, str):
+                filterProps.append(UnoProps(**{key: value})[0])
+        if len(filterProps) > 0:
+            outputprops += UnoProps(FilterData=uno.Any("[]com.sun.star.beans.PropertyValue", tuple(filterProps)))
     outputurl = uno.systemPathToFileUrl(os.path.abspath(fileOption['outputFile']))
 
 
