@@ -81,6 +81,11 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 - [x] PDF export options (password, permissions, watermark, PDF/A, page range, ...)
 - [x] PDF `appendFile` and `attachFile`
 - [ ] PDF forms (`fill`, `check`, `fillField`, `sign`): not planned, needs PDF templates
-- [ ] Charts
+- [x] Native charts (DOCX, PPTX, XLSX): create the chart in the editor, then write markers in the values of the data (the cache of the chart, `c:pt`), with a loop like in a table:
+  the first point `{d.items[i].name}`, the second `{d.items[i+1].name}` (same for the values, and the name of the series `{d.title}`). After data injection Carbone renumbers the points,
+  updates `c:ptCount` and the ranges of cells (`Sheet1!$A$2:$A$5`), and removes the points of values which are not numbers (gaps). The embedded workbook of a dynamic chart is not
+  updated, so the link (`c:externalData`) is removed: the chart is displayed from the data of the report, but "Edit data" is not available in Word/PowerPoint.
+  Tested by rendering a PPTX chart with LibreOffice. Markers are written in the chart XML (`word/charts/chart1.xml`, `ppt/charts/chart1.xml`), because editors do not show the cache of a chart.
+  Not done yet: ODT/ODS/ODP charts, charts generated from a JSON definition (ECharts: needs a renderer)
 
 Order inside a phase may change; each step ends with unit tests and a CHANGELOG entry.
