@@ -2,7 +2,7 @@
 
 ## Workflow Git (fork `ebta/carbone`)
 
-Repository upstream Carbone (v3) sudah tidak dikembangkan lagi. Fork ini dikelola sendiri, jadi:
+Upstream Carbone (v3) masih dikembangkan (v3.8.2 saat ini) dan sesekali di-merge ke `dev-itg`, tetapi fork ini dikelola sendiri dengan fitur tambahan (lihat `doc/ROADMAP.md`), jadi:
 
 - **Branch kerja utama: `dev-itg`.** Semua perubahan dikembangkan, di-commit, dan di-push langsung ke `dev-itg`.
 - **Tidak perlu membuat Pull Request.** Jangan membuat PR (ke `master` fork ini maupun ke repo upstream) kecuali diminta secara eksplisit.

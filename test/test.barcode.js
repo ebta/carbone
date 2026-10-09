@@ -171,10 +171,43 @@ describe('barcode', function () {
     });
   });
 
+  describe('EAN-8, UPC-A, Code 39, ITF (verified with a decoder)', function () {
+    it('should encode EAN-8 and add or verify the check digit', function () {
+      var _modules = barcodeLib.encodeEan8('1234567');
+      helper.assert(_modules.length, 67);
+      helper.assert(barcodeLib.encodeEan8('12345670'), _modules);
+      assert.throws(function () { barcodeLib.encodeEan8('12345671'); }, /check digit of "12345671" is wrong, it should be 0/);
+      assert.throws(function () { barcodeLib.encodeEan8('123'); }, /7 or 8 digits/);
+    });
+    it('should encode UPC-A as an EAN-13 with a leading 0', function () {
+      helper.assert(barcodeLib.encodeUpcA('03600029145'), barcodeLib.encodeEan13('003600029145'));
+      helper.assert(barcodeLib.encodeUpcA('036000291452').length, 95);
+      assert.throws(function () { barcodeLib.encodeUpcA('036000291453'); }, /Barcode upca: the check digit of "036000291453" is wrong, it should be 2/);
+      assert.throws(function () { barcodeLib.encodeUpcA('123'); }, /11 or 12 digits/);
+    });
+    it('should encode Code 39 (lowercase letters are converted)', function () {
+      helper.assert(barcodeLib.encodeCode39('abc'), barcodeLib.encodeCode39('ABC'));
+      // 3 characters + start + stop = 5 characters of 9 elements + 4 spaces
+      helper.assert(barcodeLib.encodeCode39('ABC').length, 5 * 9 + 4);
+      assert.throws(function () { barcodeLib.encodeCode39('A*B'); }, /character "\*" is not supported/);
+      assert.throws(function () { barcodeLib.encodeCode39('é'); }, /not supported/);
+    });
+    it('should encode ITF and add a leading 0 if the number of digits is odd', function () {
+      helper.assert(barcodeLib.encodeItf('123'), barcodeLib.encodeItf('0123'));
+      helper.assert(barcodeLib.encodeItf('1234').length, 4 + 20 + 3);
+      assert.throws(function () { barcodeLib.encodeItf('12A4'); }, /digits only/);
+    });
+    it('should generate PNG for each type', function () {
+      [['ean8', '1234567'], ['upca', '03600029145'], ['code39', 'HELLO-1'], ['itf', '1234567890']].forEach(function (c) {
+        assert.ok(Buffer.isBuffer(barcodeLib.generate(c[0], c[1])), c[0]);
+      });
+    });
+  });
+
   describe('generate', function () {
     it('should accept types in upper case, and refuse unknown types and empty values', function () {
       assert.ok(Buffer.isBuffer(barcodeLib.generate('QRCode', 'a')));
-      assert.throws(function () { barcodeLib.generate('datamatrix', 'a'); }, /unknown type "datamatrix". Available types: qrcode, code128, ean13/);
+      assert.throws(function () { barcodeLib.generate('datamatrix', 'a'); }, /unknown type "datamatrix". Available types: qrcode, code128, ean13, ean8, upca, code39, itf/);
       assert.throws(function () { barcodeLib.generate(undefined, 'a'); }, /unknown type/);
       assert.throws(function () { barcodeLib.generate('qrcode', ''); }, /the value is empty/);
       assert.throws(function () { barcodeLib.generate('qrcode', 12); }, /the value is empty/);

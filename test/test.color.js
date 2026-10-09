@@ -275,7 +275,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row', function (done) {
       render('text {d.c:color(row, text)}', { c : 'red' }, function (err) {
-        assert.ok(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message));
+        assert.ok(/only available for docx, odt, ods, odp, xlsx and pptx templates/.test(err.message));
         done();
       });
     });
@@ -422,7 +422,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not in a xlsx cell or row', function (done) {
       carbone.renderXML('<c>a{d.c:color(banana, text)}</c>', { c : 'red' }, { lang : 'en' }, function (err) {
-        assert.ok(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message));
+        assert.ok(/only available for docx, odt, ods, odp, xlsx and pptx templates/.test(err.message));
         done();
       });
     });
@@ -639,7 +639,7 @@ describe('color', function () {
     });
     it('should return a clear error if the marker is not inside a paragraph, a cell or a row of a docx', function (done) {
       carbone.renderXML('<text:span>a{d.c:color(p, text)}</text:span>', _data, { lang : 'en' }, function (err) {
-        helper.assert(/only available for docx, odt, ods, xlsx and pptx templates/.test(err.message), true);
+        helper.assert(/only available for docx, odt, ods, odp, xlsx and pptx templates/.test(err.message), true);
         carbone.renderXML('<w:p>a{d.c:color(banana, text)}</w:p>', _data, { lang : 'en' }, function (err) {
           helper.assert(/color\(banana, text\)/.test(err.message), true);
           done();

@@ -45,16 +45,17 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
 - [x] `drop`, `keep`: remove/keep a `row`, `p` (paragraph) or `table`. Example: `{d.hide:ifEQ(true):drop(row)}`, `{d.visible:ifEQ(true):keep(p)}`, `drop(row, 2)` for 2 consecutive rows.
   The marker can be anywhere inside the element, also in a loop. It is rewritten into a `hideBegin/hideEnd` (or `showBegin/showEnd`) block.
   Not done yet: other elements (slide, page, image, shape, list item, sheet)
-- [x] `color` (DOCX, ODT, ODS, XLSX and PPTX): `{d.c:color(scope, type)}` with a type `text` or `background`, and a scope:
+- [x] `color` (DOCX, ODT, ODS, ODP, XLSX and PPTX): `{d.c:color(scope, type)}` with a type `text` or `background`, and a scope:
   `p` (paragraph, text only for PPTX), `cell`, `row` (DOCX, ODT, ODS, PPTX), `cell` and `row` (XLSX), `shape` (PPTX).
   The value can be `#RRGGBB`, `RRGGBB`, `#RGB`, `rgb(255,0,0)` or a basic color name (an invalid color gives the default color). It can be
   computed by other formatters: `{d.status:ifEQ('late'):show('red'):elseShow('green'):color(p, text)}`.
   - DOCX: `w:color` and `w:shd` are added in the attributes, in the order of the schema.
-  - ODT, ODS: a style is created for each color after data injection, as a copy of the original style (borders, padding, alignment are kept).
+  - ODT, ODS, ODP: a style is created for each color after data injection, as a copy of the original style (borders, padding, alignment are kept).
     In ODT the text color is set on the paragraphs of a cell, in ODS on the style of the cell.
   - XLSX: fonts, fills and cell formats are created in `styles.xml` as copies of the original format (borders, number formats, alignment are kept), identical ones are stored once.
   - PPTX: a fill is written in the properties of the runs, the cells (`a:tcPr`) or the shape. An invalid color puts back the original fill of the template.
-  Not done yet: ODP, borders, text color of a part of a paragraph, columns (`col`)
+  ODP: scopes `p`, `cell`, `row` (verified by rendering; text with its own explicit color in a span keeps it, as in ODT); `shape` is not available.
+  Not done yet: shapes of ODP, borders, text color of a part of a paragraph, columns (`col`)
 - [x] `html`: `{d.richText:html}` renders HTML as native formatting in DOCX and ODT. Supported: `b`, `strong`, `i`, `em`, `u`, `s`, `del`, `sup`, `sub`, `a` (http, https, mailto, tel, ftp, sms),
   `br`, `p`, `div`, `h1`-`h6` (bold), `ul`, `ol`, `li` (nested lists are indented), `table` (cells separated by tabs), `pre`, and the inline styles font-weight, font-style and text-decoration.
   Blocks are separated by line breaks (it works anywhere, also in a table cell), the font of the marker is kept. Other formats receive the text without tags.
@@ -68,10 +69,11 @@ brackets yet: use them in the loop (`d.items[i, price>5].price:cumSum`).
   with `contain` and `fillWidth` a two cell anchor is converted into a one cell anchor, with `fill` the picture fills the cells.
   Not done yet: SVG and WebP images, pictures repeated in a loop in a spreadsheet
 - [x] Barcodes: `{d.code:barcode(type, scale, errorCorrection)}` in the alternative text of a picture (DOCX, ODT, PPTX, XLSX: same code as dynamic images).
-  Types: `qrcode` (any text, UTF-8), `code128` (ASCII 32 to 126, digits are compressed), `ean13` (12 digits: check digit added, 13 digits: check digit verified).
+  Types: `qrcode` (any text, UTF-8), `code128` (ASCII 32 to 126, digits are compressed), `ean13` (12 digits: check digit added, 13 digits: check digit verified),
+  `ean8` (7 or 8 digits), `upca` (11 or 12 digits), `code39` (0-9 A-Z - . space $ / + %), `itf` (Interleaved 2 of 5, digits, a 0 is added if odd).
   `scale`: pixels by module (1 to 30, default 8 for QR codes and 3 for others), `errorCorrection`: `L`, `M` (default), `Q`, `H` for QR codes.
   Chain `imageFit` after it to choose the size: `{d.code:barcode(qrcode):imageFit(contain)}`. An empty value removes the picture.
-  Not done yet: other types (the Enterprise Edition has more than 100: Code 39, EAN-8, Data Matrix, PDF417, ...)
+  Not done yet: other types (the Enterprise Edition has more than 100: Data Matrix, PDF417, Codabar, ...)
 - [x] Dynamic hyperlinks: the address of the link is a marker, `{d.url}` or `https://shop.com/{d.id}` (an editor can store it as `%7Bd.url%7D`, it is decoded).
   DOCX and PPTX (relationships are created for each URL, so each row of a loop can have its own link) and ODF (ODT, ODS, ODP). Only `http`, `https`, `mailto`, `tel`, `ftp`, `sms`
   and relative links are accepted, other schemes (`javascript:`, `data:`, ...) remove the link and keep the text. Tested: DOCX, ODT. PPTX, ODS, ODP: same code, unit tests only.

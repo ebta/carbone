@@ -56,7 +56,7 @@ function normalizeColor (value) {
  * @return {String}        never returns, it throws an error
  */
 function color (d, scope, type) {
-  throw new Error('Formatter "color(' + (scope || '') + ', ' + (type || '') + ')" is only available for docx, odt, ods, xlsx and pptx templates, and it must be inside a paragraph (p), a table cell (cell), a table row (row) or a shape (shape, only for pptx). Scopes: p, cell, row, shape. Types: text, background');
+  throw new Error('Formatter "color(' + (scope || '') + ', ' + (type || '') + ')" is only available for docx, odt, ods, odp, xlsx and pptx templates, and it must be inside a paragraph (p), a table cell (cell), a table row (row) or a shape (shape, only for pptx). Scopes: p, cell, row, shape. Types: text, background');
 }
 
 /**

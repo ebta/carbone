@@ -5,7 +5,8 @@ const barcodeLib = require('../lib/barcode');
  * `{d.code:barcode(qrcode)}`. The picture of the template is replaced by the barcode (see `imageFit` to choose the size).
  *
  * Available types: `qrcode` (QR code, any text), `code128` (ASCII characters from 32 to 126, numbers are compressed),
- * `ean13` (12 digits, the check digit is added, or 13 digits, the check digit is verified).
+ * `ean13` (12 digits, the check digit is added, or 13 digits, the check digit is verified), `ean8` (7 or 8 digits), `upca` (11 or 12 digits),
+ * `code39` (0-9, A-Z, - . space $ / + %) and `itf` (Interleaved 2 of 5: digits only, a 0 is added if the number of digits is odd).
  * A value as text must be used for EAN-13: a number loses its leading zeros. If the value is empty, the picture is removed.
  *
  * @version 3.5.7 new
@@ -14,7 +15,7 @@ const barcodeLib = require('../lib/barcode');
  * @example ["5901234123457", "ean13"]
  *
  * @param  {String|Number} d                text to encode
- * @param  {String} type                    `qrcode`, `code128` or `ean13`
+ * @param  {String} type                    `qrcode`, `code128`, `ean13`, `ean8`, `upca`, `code39` or `itf`
  * @param  {Integer} scale                  [optional] pixels of one module, from 1 to 30. 8 for QR codes, 3 for others
  * @param  {String} errorCorrection         [optional] only for QR codes: `L`, `M` (default), `Q` or `H`
  * @return {String}                         the barcode as base64 data URI (PNG)
